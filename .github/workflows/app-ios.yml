@@ -1,0 +1,60 @@
+name: Mapas JW iOS (IPA nativo de teste)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [master]
+    paths: ['mobile/flutter/**', '.github/workflows/app-ios.yml']
+  pull_request:
+    paths: ['mobile/flutter/**', '.github/workflows/app-ios.yml']
+
+permissions:
+  contents: read
+
+jobs:
+  ipa:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.7'
+          channel: stable
+          cache: true
+
+      - name: Instalar dependências Flutter
+        working-directory: mobile/flutter
+        run: flutter pub get
+
+      - name: Analisar e testar o app nativo
+        working-directory: mobile/flutter
+        run: |
+          flutter analyze --fatal-infos
+          flutter test
+
+      - name: Compilar IPA de teste para iPhone
+        working-directory: mobile/flutter
+        run: |
+          set -euo pipefail
+          flutter build ios --release --no-codesign --build-name 1.0.0 --build-number 1
+          app="build/ios/iphoneos/Runner.app"
+          test -d "$app"
+          actual_id="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$app/Info.plist")"
+          actual_version="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$app/Info.plist")"
+          actual_build="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$app/Info.plist")"
+          test "$actual_id" = "br.com.mapasjw.cartas"
+          test "$actual_version" = "1.0.0"
+          test "$actual_build" = "1"
+          mkdir -p "$RUNNER_TEMP/mapasjw-ios/Payload"
+          cp -R "$app" "$RUNNER_TEMP/mapasjw-ios/Payload/Mapas JW.app"
+          cd "$RUNNER_TEMP/mapasjw-ios"
+          ditto -c -k --sequesterRsrc --keepParent Payload "$RUNNER_TEMP/mapas-jw-test.ipa"
+          unzip -t "$RUNNER_TEMP/mapas-jw-test.ipa"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mapas-jw-ios-unsigned-ipa-test
+          path: ${{ runner.temp }}/mapas-jw-test.ipa
+          if-no-files-found: error
+          retention-days: 30

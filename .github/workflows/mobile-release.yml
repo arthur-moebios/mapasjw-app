@@ -1,0 +1,388 @@
+name: Mapas JW native mobile release
+
+on:
+  push:
+    tags:
+      - 'mobile-v*'
+  workflow_dispatch:
+    inputs:
+      release_version:
+        description: Versão X.Y.Z do app
+        type: string
+        required: true
+      release_notes:
+        description: Notas que serão exibidas no catálogo do SideStore
+        type: string
+        required: true
+      build_complete:
+        description: 'Build completo: compile o IPA e também o APK Android'
+        type: boolean
+        required: false
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mapasjw-mobile-release
+  cancel-in-progress: false
+
+jobs:
+  release_metadata:
+    name: Validar versão e notas
+    runs-on: ubuntu-24.04
+    outputs:
+      version: ${{ steps.release.outputs.version }}
+      version_code: ${{ steps.release.outputs.version_code }}
+      notes: ${{ steps.release.outputs.notes }}
+      build_complete: ${{ steps.release.outputs.build_complete }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Testar empacotamento e publicação no catálogo compartilhado
+        run: python3 -m unittest mobile.tests.test_sidestore_release -v
+      - name: Validar a versão solicitada
+        id: release
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          RELEASE_TAG: ${{ github.ref_name }}
+          GITHUB_REF: ${{ github.ref }}
+          GITHUB_SHA: ${{ github.sha }}
+          MANUAL_VERSION: ${{ inputs.release_version }}
+          MANUAL_NOTES: ${{ inputs.release_notes }}
+          MANUAL_BUILD_COMPLETE: ${{ inputs.build_complete }}
+        run: |
+          set -euo pipefail
+          if [ "$EVENT_NAME" = "push" ]; then
+            if ! [[ "$RELEASE_TAG" =~ ^mobile-v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+              echo "Use uma tag anotada mobile-vX.Y.Z." >&2
+              exit 1
+            fi
+            version="${RELEASE_TAG#mobile-v}"
+            notes="$(git for-each-ref --format='%(contents)' "refs/tags/$RELEASE_TAG")"
+            build_complete=false
+            if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/master; then
+              echo "Só publicamos tags que apontam para commits já integrados em master." >&2
+              exit 1
+            fi
+          else
+            if [ "$GITHUB_REF" != "refs/heads/master" ]; then
+              echo "Execute a publicação manual a partir de master." >&2
+              exit 1
+            fi
+            version="$MANUAL_VERSION"
+            notes="$MANUAL_NOTES"
+            build_complete=false
+            if [ "$MANUAL_BUILD_COMPLETE" = "true" ]; then
+              build_complete=true
+            fi
+          fi
+          if ! [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "A versão deve usar o formato X.Y.Z." >&2
+            exit 1
+          fi
+          if [ -z "${notes//[[:space:]]/}" ]; then
+            echo "As notas da versão não podem ficar vazias." >&2
+            exit 1
+          fi
+          IFS=. read -r major minor patch <<< "$version"
+          if [ "$major" -gt 2100 ] || [ "$minor" -gt 999 ] || [ "$patch" -gt 999 ]; then
+            echo "A versão excede os limites usados para o número monotônico de build." >&2
+            exit 1
+          fi
+          version_code=$((major * 1000000 + minor * 1000 + patch))
+          if [ "$version_code" -lt 2 ] || [ "$version_code" -gt 2100000000 ]; then
+            echo "O número calculado de build Android/iOS está fora do intervalo suportado." >&2
+            exit 1
+          fi
+          delimiter="release_notes_$(python3 -c 'import secrets; print(secrets.token_hex(16))')"
+          {
+            echo "version=$version"
+            echo "version_code=$version_code"
+            echo "build_complete=$build_complete"
+            echo "notes<<$delimiter"
+            printf '%s\n' "$notes"
+            echo "$delimiter"
+          } >> "$GITHUB_OUTPUT"
+
+  flutter_checks:
+    name: Análise e testes Flutter
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.7'
+          channel: stable
+          cache: true
+      - name: Instalar dependências
+        working-directory: mobile/flutter
+        run: flutter pub get
+      - name: Analisar e testar
+        working-directory: mobile/flutter
+        run: |
+          flutter analyze --fatal-infos
+          flutter test
+
+  android:
+    name: Android ARM64 APK assinado
+    needs: [release_metadata, flutter_checks]
+    if: ${{ needs.release_metadata.outputs.build_complete == 'true' }}
+    runs-on: ubuntu-24.04
+    outputs:
+      application_id: ${{ steps.apk.outputs.application_id }}
+      version: ${{ steps.apk.outputs.version }}
+      build_version: ${{ steps.apk.outputs.build_version }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.7'
+          channel: stable
+          cache: true
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Instalar dependências Flutter
+        working-directory: mobile/flutter
+        run: flutter pub get
+      - name: Preparar a chave de assinatura Android
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          GOOGLE_MAPS_ANDROID_API_KEY: ${{ secrets.GOOGLE_MAPS_ANDROID_API_KEY }}
+        run: |
+          set -euo pipefail
+          if [ -z "$KEYSTORE_BASE64" ] || [ -z "$KEY_ALIAS" ] || \
+             [ -z "$STORE_PASSWORD" ] || [ -z "$KEY_PASSWORD" ]; then
+            echo "Os secrets de assinatura Android não estão completos." >&2
+            exit 1
+          fi
+          if [ -z "$GOOGLE_MAPS_ANDROID_API_KEY" ]; then
+            echo "Configure o secret GOOGLE_MAPS_ANDROID_API_KEY para publicar o mapa nativo Android." >&2
+            exit 1
+          fi
+          keystore="$RUNNER_TEMP/mapasjw-release.jks"
+          printf '%s' "$KEYSTORE_BASE64" | base64 --decode > "$keystore"
+          chmod 600 "$keystore"
+          echo "MAPASJW_KEYSTORE_PATH=$keystore" >> "$GITHUB_ENV"
+          echo "MAPASJW_KEY_ALIAS=$KEY_ALIAS" >> "$GITHUB_ENV"
+          echo "MAPASJW_STORE_PASSWORD=$STORE_PASSWORD" >> "$GITHUB_ENV"
+          echo "MAPASJW_KEY_PASSWORD=$KEY_PASSWORD" >> "$GITHUB_ENV"
+          echo "GOOGLE_MAPS_ANDROID_API_KEY=$GOOGLE_MAPS_ANDROID_API_KEY" >> "$GITHUB_ENV"
+      - name: Compilar APK release nativo
+        working-directory: mobile/flutter
+        env:
+          RELEASE_VERSION: ${{ needs.release_metadata.outputs.version }}
+          RELEASE_BUILD: ${{ needs.release_metadata.outputs.version_code }}
+        run: flutter build apk --release --target-platform android-arm64 --build-name "$RELEASE_VERSION" --build-number "$RELEASE_BUILD"
+      - name: Conferir identidade e assinatura extraídas do APK
+        id: apk
+        env:
+          EXPECTED_VERSION: ${{ needs.release_metadata.outputs.version }}
+          EXPECTED_VERSION_CODE: ${{ needs.release_metadata.outputs.version_code }}
+        run: |
+          set -euo pipefail
+          apk="mobile/flutter/build/app/outputs/flutter-apk/app-release.apk"
+          sdk_root="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
+          apkanalyzer="$(find "$sdk_root/cmdline-tools" -maxdepth 4 -type f -name apkanalyzer | sort -V | tail -n 1)"
+          apksigner="$(find "$sdk_root/build-tools" -maxdepth 2 -type f -name apksigner | sort -V | tail -n 1)"
+          test -n "$apkanalyzer"
+          test -n "$apksigner"
+          application_id="$("$apkanalyzer" manifest application-id "$apk")"
+          version_name="$("$apkanalyzer" manifest version-name "$apk")"
+          version_code="$("$apkanalyzer" manifest version-code "$apk")"
+          test "$application_id" = "br.com.mapasjw.cartas"
+          test "$version_name" = "$EXPECTED_VERSION"
+          test "$version_code" = "$EXPECTED_VERSION_CODE"
+          "$apksigner" verify --verbose "$apk"
+          mkdir -p "$RUNNER_TEMP/mapasjw-android"
+          cp "$apk" "$RUNNER_TEMP/mapasjw-android/android-release.apk"
+          {
+            echo "application_id=$application_id"
+            echo "version=$version_name"
+            echo "build_version=$version_code"
+          } >> "$GITHUB_OUTPUT"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mapas-jw-android-release
+          path: ${{ runner.temp }}/mapasjw-android/android-release.apk
+          if-no-files-found: error
+          retention-days: 30
+
+  ios:
+    name: IPA nativo iOS sem assinatura de distribuição
+    needs: [release_metadata, flutter_checks]
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.7'
+          channel: stable
+          cache: true
+      - name: Instalar dependências Flutter
+        working-directory: mobile/flutter
+        run: flutter pub get
+      - name: Compilar para iPhone sem certificado de distribuição
+        working-directory: mobile/flutter
+        env:
+          RELEASE_VERSION: ${{ needs.release_metadata.outputs.version }}
+          RELEASE_BUILD: ${{ needs.release_metadata.outputs.version_code }}
+        run: |
+          set -euo pipefail
+          flutter build ios --release --no-codesign \
+            --build-name "$RELEASE_VERSION" \
+            --build-number "$RELEASE_BUILD"
+          app="build/ios/iphoneos/Runner.app"
+          test -d "$app"
+          actual_id="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$app/Info.plist")"
+          actual_version="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$app/Info.plist")"
+          actual_build="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$app/Info.plist")"
+          test "$actual_id" = "br.com.mapasjw.cartas"
+          test "$actual_version" = "$RELEASE_VERSION"
+          test "$actual_build" = "$RELEASE_BUILD"
+          mkdir -p "$RUNNER_TEMP/mapasjw-ios/Payload"
+          cp -R "$app" "$RUNNER_TEMP/mapasjw-ios/Payload/Mapas JW.app"
+          cd "$RUNNER_TEMP/mapasjw-ios"
+          ditto -c -k --sequesterRsrc --keepParent Payload "$RUNNER_TEMP/mapas-jw.ipa"
+          unzip -t "$RUNNER_TEMP/mapas-jw.ipa"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mapas-jw-ios-unsigned-ipa
+          path: ${{ runner.temp }}/mapas-jw.ipa
+          if-no-files-found: error
+          retention-days: 30
+
+  publish:
+    name: Publicar IPA e APK opcional e atualizar catálogo compartilhado
+    needs: [release_metadata, android, ios]
+    if: ${{ always() && needs.release_metadata.result == 'success' && needs.ios.result == 'success' && (needs.android.result == 'success' || needs.android.result == 'skipped') && github.repository == 'arthur-moebios/mapasjw' && github.event_name != 'pull_request' && (github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/mobile-v')) }}
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        if: ${{ needs.release_metadata.outputs.build_complete == 'true' }}
+        with:
+          name: mapas-jw-android-release
+          path: ${{ runner.temp }}/mapasjw-android
+      - uses: actions/download-artifact@v4
+        with:
+          name: mapas-jw-ios-unsigned-ipa
+          path: ${{ runner.temp }}
+      - name: Preparar pacotes e metadados verificados
+        env:
+          RELEASE_VERSION: ${{ needs.release_metadata.outputs.version }}
+          RELEASE_NOTES: ${{ needs.release_metadata.outputs.notes }}
+          APPLICATION_ID: ${{ needs.android.outputs.application_id }}
+          APK_VERSION: ${{ needs.android.outputs.version }}
+          APK_BUILD_VERSION: ${{ needs.android.outputs.build_version }}
+          BUILD_COMPLETE: ${{ needs.release_metadata.outputs.build_complete }}
+          RUNNER_TEMP: ${{ runner.temp }}
+        run: |
+          set -euo pipefail
+          if [ "$BUILD_COMPLETE" = "true" ]; then
+            test "$APK_VERSION" = "$RELEASE_VERSION"
+            python3 .github/scripts/sidestore.py package-android \
+              --apk "$RUNNER_TEMP/mapasjw-android/android-release.apk" \
+              --output "$RUNNER_TEMP/mapasjw-android.tar" \
+              --application-id "$APPLICATION_ID" \
+              --version "$APK_VERSION" \
+              --build-version "$APK_BUILD_VERSION"
+          fi
+          python3 .github/scripts/sidestore.py package \
+            --ipa "$RUNNER_TEMP/mapas-jw.ipa" \
+            --icon mobile/flutter/ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-1024x1024@1x.png \
+            --output "$RUNNER_TEMP/mapasjw-ios.tar" \
+            --expected-version "$RELEASE_VERSION" \
+            --release-notes "$RELEASE_NOTES" \
+            --app-name "Mapas JW" \
+            --developer-name "Moebios Energy" \
+            --app-subtitle "Mapas e territórios da congregação." \
+            --app-description "Acesse os territórios, cartões e recursos do Mapas JW. O registro de trajeto pode continuar com a tela bloqueada quando você o iniciar." \
+            --app-category utilities
+      - name: Publicar no serviço HTTPS compartilhado
+        env:
+          SIDESTORE_DEPLOY_SSH_KEY: ${{ secrets.SIDESTORE_DEPLOY_SSH_KEY }}
+          SIDESTORE_DEPLOY_HOST: ${{ vars.SIDESTORE_DEPLOY_HOST }}
+          SIDESTORE_DEPLOY_PORT: ${{ vars.SIDESTORE_DEPLOY_PORT }}
+          SIDESTORE_DEPLOY_USER: ${{ vars.SIDESTORE_DEPLOY_USER }}
+          SIDESTORE_DEPLOY_HOST_KEY: ${{ vars.SIDESTORE_DEPLOY_HOST_KEY }}
+          BUILD_COMPLETE: ${{ needs.release_metadata.outputs.build_complete }}
+          RUNNER_TEMP: ${{ runner.temp }}
+        run: |
+          set -euo pipefail
+          if [ -z "$SIDESTORE_DEPLOY_SSH_KEY" ] || [ -z "$SIDESTORE_DEPLOY_HOST" ] || \
+             [ -z "$SIDESTORE_DEPLOY_PORT" ] || [ -z "$SIDESTORE_DEPLOY_USER" ] || \
+             [ -z "$SIDESTORE_DEPLOY_HOST_KEY" ]; then
+            echo "As credenciais e variáveis de publicação não estão configuradas." >&2
+            exit 1
+          fi
+          key_file="$RUNNER_TEMP/sidestore_deploy_key"
+          known_hosts="$RUNNER_TEMP/sidestore_known_hosts"
+          umask 077
+          printf '%s\n' "$SIDESTORE_DEPLOY_SSH_KEY" > "$key_file"
+          printf '[%s]:%s %s\n' "$SIDESTORE_DEPLOY_HOST" "$SIDESTORE_DEPLOY_PORT" \
+            "$SIDESTORE_DEPLOY_HOST_KEY" > "$known_hosts"
+          bundles=("$RUNNER_TEMP/mapasjw-ios.tar")
+          if [ "$BUILD_COMPLETE" = "true" ]; then
+            bundles=("$RUNNER_TEMP/mapasjw-android.tar" "${bundles[@]}")
+          fi
+          for bundle in "${bundles[@]}"; do
+            ssh -F /dev/null \
+              -i "$key_file" \
+              -p "$SIDESTORE_DEPLOY_PORT" \
+              -o BatchMode=yes \
+              -o IdentitiesOnly=yes \
+              -o StrictHostKeyChecking=yes \
+              -o UserKnownHostsFile="$known_hosts" \
+              -o HostKeyAlgorithms=ssh-ed25519 \
+              "$SIDESTORE_DEPLOY_USER@$SIDESTORE_DEPLOY_HOST" < "$bundle"
+          done
+          rm -f "$key_file" "$known_hosts"
+      - name: Baixar e comparar os pacotes publicados e o catálogo
+        env:
+          RELEASE_VERSION: ${{ needs.release_metadata.outputs.version }}
+          BUILD_VERSION: ${{ needs.release_metadata.outputs.version_code }}
+          BUILD_COMPLETE: ${{ needs.release_metadata.outputs.build_complete }}
+          RUNNER_TEMP: ${{ runner.temp }}
+        run: |
+          set -euo pipefail
+          base="https://app.moebiosenergy.com.br/sidestore"
+          if [ "$BUILD_COMPLETE" = "true" ]; then
+            android="$base/apps/android/br.com.mapasjw.cartas"
+            curl --fail --silent --show-error --location \
+              "$android/$RELEASE_VERSION/$BUILD_VERSION.apk" \
+              -o "$RUNNER_TEMP/android-versioned-check.apk"
+            curl --fail --silent --show-error --location \
+              "$android/latest.apk?check=$GITHUB_RUN_ID" \
+              -o "$RUNNER_TEMP/android-latest-check.apk"
+            cmp "$RUNNER_TEMP/mapasjw-android/android-release.apk" "$RUNNER_TEMP/android-versioned-check.apk"
+            cmp "$RUNNER_TEMP/mapasjw-android/android-release.apk" "$RUNNER_TEMP/android-latest-check.apk"
+          fi
+          curl --fail --silent --show-error --location \
+            "$base/apps/br.com.mapasjw.cartas/$RELEASE_VERSION/$BUILD_VERSION.ipa" \
+            -o "$RUNNER_TEMP/ios-versioned-check.ipa"
+          cmp "$RUNNER_TEMP/mapas-jw.ipa" "$RUNNER_TEMP/ios-versioned-check.ipa"
+          curl --fail --silent --show-error --location \
+            "$base/source.json?check=$GITHUB_RUN_ID" \
+            -o "$RUNNER_TEMP/source-check.json"
+          python3 - "$RUNNER_TEMP/source-check.json" "$RELEASE_VERSION" "$BUILD_VERSION" <<'PY'
+          import json
+          import sys
+          from pathlib import Path
+
+          source = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+          expected_version, expected_build = sys.argv[2:]
+          matches = [app for app in source.get("apps", []) if app.get("bundleIdentifier") == "br.com.mapasjw.cartas"]
+          if len(matches) != 1:
+              raise SystemExit("Catálogo público não contém uma entrada única para Mapas JW.")
+          versions = matches[0].get("versions", [])
+          if not versions or versions[0].get("version") != expected_version or str(versions[0].get("buildVersion")) != expected_build:
+              raise SystemExit("A versão mais recente do catálogo não corresponde ao IPA publicado.")
+          print("Pacotes e catálogo públicos conferem com os builds da execução.")
+          PY

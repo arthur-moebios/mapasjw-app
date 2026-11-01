@@ -1,0 +1,53 @@
+name: Mapas JW Flutter checks
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [master]
+    paths:
+      - 'mobile/flutter/**'
+      - 'app/Http/Controllers/Api/Mobile/CartasMobileController.php'
+      - 'app/Http/Middleware/ResolveMobileCartasCongregation.php'
+      - 'routes/api.php'
+      - '.github/workflows/mobile-flutter-checks.yml'
+  pull_request:
+    paths:
+      - 'mobile/flutter/**'
+      - 'app/Http/Controllers/Api/Mobile/CartasMobileController.php'
+      - 'app/Http/Middleware/ResolveMobileCartasCongregation.php'
+      - 'routes/api.php'
+      - '.github/workflows/mobile-flutter-checks.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  flutter:
+    name: Analyze and test native app
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.7'
+          channel: stable
+          cache: true
+
+      - name: Resolve dependencies
+        working-directory: mobile/flutter
+        run: flutter pub get
+
+      - name: Analyze and test
+        working-directory: mobile/flutter
+        run: |
+          flutter analyze --fatal-infos
+          flutter test
+
+      - name: Export resolved dependency lock for review
+        uses: actions/upload-artifact@v4
+        with:
+          name: mapasjw-flutter-pubspec-lock
+          path: mobile/flutter/pubspec.lock
+          if-no-files-found: error
+          retention-days: 1

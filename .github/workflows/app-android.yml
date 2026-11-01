@@ -1,0 +1,58 @@
+name: Mapas JW Android (APK nativo de teste)
+
+on:
+  workflow_dispatch:
+    inputs:
+      build_complete:
+        description: Gere o APK ARM64 de depuração nesta execução manual
+        type: boolean
+        required: false
+        default: false
+  push:
+    branches: [master]
+    paths: ['mobile/flutter/**', '.github/workflows/app-android.yml']
+  pull_request:
+    paths: ['mobile/flutter/**', '.github/workflows/app-android.yml']
+
+permissions:
+  contents: read
+
+jobs:
+  apk:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.7'
+          channel: stable
+          cache: true
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Instalar dependências Flutter
+        working-directory: mobile/flutter
+        run: flutter pub get
+
+      - name: Analisar e testar o app nativo
+        working-directory: mobile/flutter
+        run: |
+          flutter analyze --fatal-infos
+          flutter test
+
+      - name: Compilar APK nativo ARM64 de teste
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.build_complete }}
+        working-directory: mobile/flutter
+        run: flutter build apk --debug --target-platform android-arm64
+
+      - uses: actions/upload-artifact@v4
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.build_complete }}
+        with:
+          name: mapas-jw-android-arm64-debug
+          path: mobile/flutter/build/app/outputs/flutter-apk/app-debug.apk
+          if-no-files-found: error
+          retention-days: 30
