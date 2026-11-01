@@ -31,6 +31,15 @@ find . -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +
 git -C "$principal" archive "$ref" mobile .github | tar -x
 find . -name __pycache__ -type d -prune -exec rm -rf {} +
 
+# Os workflows de build do app ficam em mobile/ci/ no repo principal, fora de
+# .github/workflows/, para não rodarem no privado. No espelho público eles
+# voltam para .github/workflows/, que é onde o GitHub Actions os executa.
+if [ -d mobile/ci ]; then
+  mkdir -p .github/workflows
+  cp mobile/ci/*.yml .github/workflows/
+  rm -rf mobile/ci
+fi
+
 cat > README.md <<'MD'
 # Mapas JW — app nativo
 
