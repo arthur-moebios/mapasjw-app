@@ -104,9 +104,8 @@ class _DesignationsScreenState extends ConsumerState<DesignationsScreen> {
           const SizedBox(height: 4),
           Text(
             'Confira quem está designado e quais locais estão sob seus cuidados.',
-            style: Theme.of(
-              context,
-            ).textTheme.bodyMedium?.copyWith(color: colors.onSurfaceVariant),
+            style: Theme.of(context).textTheme.bodyMedium
+                ?.copyWith(color: colors.onSurfaceVariant),
           ),
           const SizedBox(height: 16),
           Wrap(

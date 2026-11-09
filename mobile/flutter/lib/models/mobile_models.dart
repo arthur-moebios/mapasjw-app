@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:latlong2/latlong.dart';
 
 import 'apartment_status_wizard.dart';
+import 'publication_citation.dart';
 
 class MobileDashboardSummary {
   const MobileDashboardSummary({
@@ -501,6 +502,7 @@ class ApartmentLetter {
     this.letterWrittenAt,
     this.publication,
     this.subject,
+    this.citations = const [],
     this.observation,
     this.deliveredBoxGuard = false,
     this.deliveredDoormanMail = false,
@@ -526,6 +528,9 @@ class ApartmentLetter {
   final String? letterWrittenAt;
   final String? publication;
   final String? subject;
+
+  /// Publicações citadas (até 5). Vazia quando o servidor não manda.
+  final List<PublicationCitation> citations;
   final String? observation;
   final bool deliveredBoxGuard;
   final bool deliveredDoormanMail;
@@ -575,6 +580,7 @@ class ApartmentLetter {
         letterWrittenAt: json['letter_written_at'] as String?,
         publication: json['publication'] as String?,
         subject: json['subject'] as String?,
+        citations: PublicationCitation.listFromJson(json['citacoes']),
         observation: json['observacao'] as String?,
         deliveredBoxGuard: json['delivered_box_guard'] == true,
         deliveredDoormanMail: json['delivered_doorman_mail'] == true,
@@ -622,6 +628,12 @@ class ApartmentLetter {
       letterWrittenAt: fields['letter_written_at'] as String?,
       publication: fields['publication'] as String?,
       subject: fields['subject'] as String?,
+      // `citacoes` ausente no payload = não alterado; limpar = vazio.
+      citations: fields['limpar'] == true
+          ? const []
+          : fields.containsKey('citacoes')
+          ? PublicationCitation.listFromJson(fields['citacoes'])
+          : citations,
       observation: fields['observacao'] as String?,
       deliveredBoxGuard: fields['delivered_box_guard'] == true,
       deliveredDoormanMail: fields['delivered_doorman_mail'] == true,
@@ -634,11 +646,19 @@ class PublicationSuggestion {
     required this.title,
     required this.code,
     required this.topics,
+    this.type = '',
+    this.link,
+    this.cover,
+    this.isNew = false,
   });
 
   final String title;
   final String code;
   final List<String> topics;
+  final String type;
+  final String? link;
+  final String? cover;
+  final bool isNew;
 
   String get label => code.isEmpty ? title : '$code — $title';
 
@@ -648,6 +668,10 @@ class PublicationSuggestion {
     return PublicationSuggestion(
       title: json['titulo'] as String? ?? '',
       code: json['codigo'] as String? ?? '',
+      type: json['tipo'] as String? ?? '',
+      link: httpsOnly(json['link']),
+      cover: httpsOnly(json['capa']),
+      isNew: json['novo'] == true,
       topics: rawTopics
           .map((topic) {
             if (topic is String) return topic;
@@ -672,6 +696,9 @@ class ApartmentDeliveryHistoryEntry {
     required this.deliveredBoxGuard,
     required this.deliveredDoormanMail,
     required this.isCurrentCampaign,
+    this.citations = const [],
+    this.inProgress = false,
+    this.statusLabel,
   });
 
   final String campaign;
@@ -684,6 +711,13 @@ class ApartmentDeliveryHistoryEntry {
   final bool deliveredBoxGuard;
   final bool deliveredDoormanMail;
   final bool isCurrentCampaign;
+  final List<PublicationCitation> citations;
+
+  /// Carta registrada na campanha mas ainda não entregue.
+  final bool inProgress;
+
+  /// Nome do status conforme a congregação (ex.: "Escrita").
+  final String? statusLabel;
 
   factory ApartmentDeliveryHistoryEntry.fromJson(Map<String, dynamic> json) =>
       ApartmentDeliveryHistoryEntry(
@@ -697,6 +731,9 @@ class ApartmentDeliveryHistoryEntry {
         deliveredBoxGuard: json['delivered_box_guard'] == true,
         deliveredDoormanMail: json['delivered_doorman_mail'] == true,
         isCurrentCampaign: json['desta_campanha'] == true,
+        citations: PublicationCitation.listFromJson(json['citacoes']),
+        inProgress: json['em_andamento'] == true,
+        statusLabel: json['status_label'] as String?,
       );
 }
 
@@ -1709,18 +1746,21 @@ class FieldLocation {
     required this.name,
     this.address = '',
     this.mapsUrl = '',
+    this.reference = '',
   });
 
   final int id;
   final String name;
   final String address;
   final String mapsUrl;
+  final String reference;
 
   factory FieldLocation.fromJson(Map<String, dynamic> json) => FieldLocation(
     id: (json['id'] as num).toInt(),
     name: json['name'] as String? ?? 'Local de encontro',
     address: json['address'] as String? ?? '',
     mapsUrl: json['maps_url'] as String? ?? '',
+    reference: json['reference'] as String? ?? '',
   );
 }
 
@@ -1759,6 +1799,47 @@ class FieldOutingTerritoryCard {
       );
 }
 
+/// Trecho a que a saída se refere: ponto de entrada de um cartão de rua, com
+/// as ruas do cartão e, quando houver, o local com endereço e referência.
+class FieldOutingStreetPoint {
+  const FieldOutingStreetPoint({
+    required this.id,
+    required this.cardCode,
+    this.cardName = '',
+    this.pointName = '',
+    this.streets = const [],
+    this.location,
+  });
+
+  final String id;
+  final String cardCode;
+  final String cardName;
+  final String pointName;
+  final List<String> streets;
+  final FieldLocation? location;
+
+  String get label => [
+    cardCode,
+    pointName.isNotEmpty ? pointName : cardName,
+  ].where((part) => part.isNotEmpty).join(' · ');
+
+  factory FieldOutingStreetPoint.fromJson(Map<String, dynamic> json) {
+    final locationJson = json['location'];
+    return FieldOutingStreetPoint(
+      id: '${json['id'] ?? ''}',
+      cardCode: json['card_code'] as String? ?? '',
+      cardName: json['card_name'] as String? ?? '',
+      pointName: json['point_name'] as String? ?? '',
+      streets: (json['streets'] as List? ?? const [])
+          .whereType<String>()
+          .toList(growable: false),
+      location: locationJson is Map
+          ? FieldLocation.fromJson(Map<String, dynamic>.from(locationJson))
+          : null,
+    );
+  }
+}
+
 class FieldOuting {
   const FieldOuting({
     required this.id,
@@ -1771,6 +1852,7 @@ class FieldOuting {
     required this.situation,
     required this.situationLabel,
     this.territoryCards = const [],
+    this.streetPoints = const [],
     this.location,
     this.recurrenceId,
   });
@@ -1785,6 +1867,7 @@ class FieldOuting {
   final String situation;
   final String situationLabel;
   final List<FieldOutingTerritoryCard> territoryCards;
+  final List<FieldOutingStreetPoint> streetPoints;
   final FieldLocation? location;
   final int? recurrenceId;
 
@@ -1810,6 +1893,14 @@ class FieldOuting {
           .whereType<Map>()
           .map(
             (item) => FieldOutingTerritoryCard.fromJson(
+              Map<String, dynamic>.from(item),
+            ),
+          )
+          .toList(growable: false),
+      streetPoints: (json['street_points'] as List? ?? const [])
+          .whereType<Map>()
+          .map(
+            (item) => FieldOutingStreetPoint.fromJson(
               Map<String, dynamic>.from(item),
             ),
           )

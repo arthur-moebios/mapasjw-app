@@ -92,9 +92,8 @@ class _CircuitOverviewScreenState extends ConsumerState<CircuitOverviewScreen> {
               children: [
                 Text(
                   'Visão geral do circuito',
-                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
+                  style: Theme.of(context).textTheme.headlineSmall
+                      ?.copyWith(fontWeight: FontWeight.w700),
                 ),
                 const SizedBox(height: 4),
                 Text(
@@ -108,9 +107,8 @@ class _CircuitOverviewScreenState extends ConsumerState<CircuitOverviewScreen> {
                 const SizedBox(height: 18),
                 Text(
                   'Limites históricos',
-                  style: Theme.of(
-                    context,
-                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
+                  style: Theme.of(context).textTheme.titleLarge
+                      ?.copyWith(fontWeight: FontWeight.w700),
                 ),
                 const SizedBox(height: 8),
                 DropdownButtonFormField<int?>(
@@ -155,9 +153,8 @@ class _CircuitOverviewScreenState extends ConsumerState<CircuitOverviewScreen> {
                 const SizedBox(height: 18),
                 Text(
                   'Atividade por congregação',
-                  style: Theme.of(
-                    context,
-                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
+                  style: Theme.of(context).textTheme.titleLarge
+                      ?.copyWith(fontWeight: FontWeight.w700),
                 ),
                 const SizedBox(height: 8),
                 if (congregations.isEmpty)
@@ -264,9 +261,8 @@ class _TotalTile extends StatelessWidget {
         children: [
           Text(
             value.toString(),
-            style: Theme.of(
-              context,
-            ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800),
+            style: Theme.of(context).textTheme.headlineSmall
+                ?.copyWith(fontWeight: FontWeight.w800),
           ),
           const SizedBox(height: 3),
           Text(
@@ -451,9 +447,8 @@ class _CongregationSummaryCard extends StatelessWidget {
                 Expanded(
                   child: Text(
                     summary.name,
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
+                    style: Theme.of(context).textTheme.titleMedium
+                        ?.copyWith(fontWeight: FontWeight.w700),
                   ),
                 ),
                 _MetricBadge(
@@ -492,9 +487,8 @@ class _CongregationSummaryCard extends StatelessWidget {
             const SizedBox(height: 4),
             Text(
               '${summary.workEntries} registros de trabalho · ${summary.routePoints} pontos de percurso',
-              style: Theme.of(
-                context,
-              ).textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant),
+              style: Theme.of(context).textTheme.bodySmall
+                  ?.copyWith(color: colors.onSurfaceVariant),
             ),
           ],
         ),
@@ -519,10 +513,8 @@ class _MetricBadge extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
       child: Text(
         label,
-        style: Theme.of(context).textTheme.labelSmall?.copyWith(
-          color: color,
-          fontWeight: FontWeight.w700,
-        ),
+        style: Theme.of(context).textTheme.labelSmall
+            ?.copyWith(color: color, fontWeight: FontWeight.w700),
       ),
     ),
   );

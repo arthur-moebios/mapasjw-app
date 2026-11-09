@@ -501,6 +501,112 @@ void main() {
     expect(sharedFiles.single.method, 'shareFile');
   });
 
+  testWidgets(
+    'field outing editor lists street points and keeps notes above keyboard',
+    (tester) async {
+      tester.view.physicalSize = const Size(430, 900);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      addTearDown(tester.view.resetViewInsets);
+
+      final now = DateTime.now();
+      final month = '${now.year}-${now.month.toString().padLeft(2, '0')}';
+      final date = '$month-${now.day.toString().padLeft(2, '0')}';
+      final appState = MobileAppState(
+        selectedCongregationId: 1,
+        canViewFieldOutings: true,
+        fieldCalendar: FieldCalendarData.fromJson({
+          'month': month,
+          'outings': [
+            {
+              'id': 12,
+              'date': date,
+              'time': '09:00',
+              'leader': 'Ana Silva',
+              'notes': '',
+              'all_groups': true,
+              'groups': [],
+              'location': {
+                'id': 8,
+                'name': 'Praça Central',
+                'address': 'Rua Principal, 10',
+                'reference': 'Em frente à padaria',
+              },
+              'situation': {'slug': 'pendente', 'label': 'Pendente'},
+              'street_points': [
+                {
+                  'id': 'p1',
+                  'card_code': '11.005',
+                  'point_name': 'Entrada Norte',
+                  'streets': ['Rua Alfa', 'Rua Beta'],
+                  'location': {
+                    'id': 9,
+                    'name': 'Ponto',
+                    'address': 'Av. do Ponto, 5',
+                    'reference': 'Perto do mercado',
+                  },
+                },
+              ],
+            },
+          ],
+          'patterns': [],
+          'locations': [
+            {
+              'id': 8,
+              'name': 'Praça Central',
+              'address': 'Rua Principal, 10',
+              'reference': 'Em frente à padaria',
+            },
+          ],
+          'groups': [],
+          'leaders': [],
+          'permissions': {'can_manage': true, 'can_manage_locations': false},
+        }),
+      );
+      await tester.pumpWidget(
+        _testApp(
+          appState,
+          const FieldOutingsScreen(),
+          controller: _FakeMobileAppController(appState, exportDays: const []),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Ref.: Em frente à padaria'), findsOneWidget);
+      expect(find.text('11.005 · Entrada Norte'), findsOneWidget);
+      expect(find.text('Rua Alfa, Rua Beta'), findsOneWidget);
+      expect(find.text('Av. do Ponto, 5'), findsOneWidget);
+      expect(find.text('Ref.: Perto do mercado'), findsOneWidget);
+
+      await tester.tap(find.byTooltip('Opções da saída'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Editar'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('TRECHOS DESTA SAÍDA'), findsNWidgets(2));
+      expect(find.text('Rua Alfa, Rua Beta'), findsNWidgets(2));
+
+      final notes = find.byKey(const ValueKey('outing-notes-field'));
+      await tester.dragUntilVisible(
+        notes,
+        find.byType(ListView).last,
+        const Offset(0, -150),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(notes);
+      await tester.pumpAndSettle();
+      tester.view.viewInsets = const FakeViewPadding(bottom: 400);
+      await tester.pumpAndSettle();
+      tester.testTextInput.enterText('Levar mapas extras');
+      await tester.pumpAndSettle();
+
+      final rect = tester.getRect(notes);
+      expect(rect.bottom, lessThanOrEqualTo(900 - 400));
+      expect(rect.top, greaterThanOrEqualTo(0));
+    },
+  );
+
   testWidgets('letters list shows campaign progress and filters by search', (
     tester,
   ) async {

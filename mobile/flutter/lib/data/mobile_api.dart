@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'package:dio/dio.dart';
 
 import '../models/mobile_models.dart';
+import '../models/publication_citation.dart';
 
 class MobileApi {
   MobileApi({Dio? dio}) : _dio = dio ?? Dio(_options);
@@ -460,6 +461,19 @@ class MobileApi {
       options: _authenticated(token, congregationId),
     );
     return CondominiumDetail.fromJson(response.data ?? const {});
+  }
+
+  /// Catálogo v2 de publicações. Servidor antigo (404) lança: quem chama cai
+  /// no catálogo antigo do detalhe do condomínio.
+  Future<PublicationCatalog> publicationCatalog({
+    required String token,
+    required int congregationId,
+  }) async {
+    final response = await _dio.get<Map<String, dynamic>>(
+      '/mobile/letters/publications',
+      options: _authenticated(token, congregationId),
+    );
+    return PublicationCatalog.fromJson(response.data ?? const {});
   }
 
   Future<void> updateApartmentStatus({

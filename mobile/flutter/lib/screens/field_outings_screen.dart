@@ -451,6 +451,16 @@ class _FieldOutingsScreenState extends ConsumerState<FieldOutingsScreen> {
                     ),
                   ),
                 ),
+              if ((outing.location?.reference ?? '').isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(left: 29, top: 2),
+                  child: Text(
+                    'Ref.: ${outing.location!.reference}',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ),
               if (outing.location?.mapsUrl.isNotEmpty == true)
                 Align(
                   alignment: Alignment.centerLeft,
@@ -497,6 +507,10 @@ class _FieldOutingsScreenState extends ConsumerState<FieldOutingsScreen> {
                           )
                           .toList(growable: false),
               ),
+              if (outing.streetPoints.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                _StreetPointsList(points: outing.streetPoints),
+              ],
               if (outing.territoryCards.isNotEmpty) ...[
                 const SizedBox(height: 12),
                 Text(
@@ -829,6 +843,7 @@ class _FieldOutingsScreenState extends ConsumerState<FieldOutingsScreen> {
       includeWeekdays: false,
       isEditing: outing != null,
       outingId: outing?.id,
+      streetPoints: outing?.streetPoints ?? const [],
       leaders: calendar.leaders,
     );
     if (payload == null || !mounted) return;
@@ -862,6 +877,7 @@ class _FieldOutingsScreenState extends ConsumerState<FieldOutingsScreen> {
     required List<String> leaders,
     int? outingId,
     FieldOutingPattern? pattern,
+    List<FieldOutingStreetPoint> streetPoints = const [],
   }) async {
     final nameController = TextEditingController(text: pattern?.name ?? '');
     final notesController = TextEditingController(text: initialNotes);
@@ -886,405 +902,450 @@ class _FieldOutingsScreenState extends ConsumerState<FieldOutingsScreen> {
       isScrollControlled: true,
       showDragHandle: true,
       builder: (sheetContext) => StatefulBuilder(
-        builder: (context, setSheetState) => SafeArea(
-          child: FractionallySizedBox(
-            heightFactor: .92,
-            child: Column(
-              children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 4, 20, 14),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          includeWeekdays
-                              ? (pattern == null
-                                    ? 'Novo padrão semanal'
-                                    : 'Editar padrão')
-                              : (isEditing
-                                    ? 'Editar saída de campo'
-                                    : 'Nova saída de campo'),
-                          style: Theme.of(context).textTheme.titleLarge,
-                        ),
-                      ),
-                      IconButton(
-                        onPressed: () => Navigator.pop(sheetContext),
-                        icon: const Icon(Icons.close_rounded),
-                      ),
-                    ],
-                  ),
-                ),
-                Expanded(
-                  child: ListView(
-                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-                    children: [
-                      if (includeWeekdays) ...[
-                        TextField(
-                          controller: nameController,
-                          textCapitalization: TextCapitalization.sentences,
-                          decoration: const InputDecoration(
-                            labelText: 'Nome do padrão',
+        builder: (context, setSheetState) => AnimatedPadding(
+          duration: const Duration(milliseconds: 100),
+          // Sobe a folha acima do teclado para o campo em edição ficar visível.
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.viewInsetsOf(context).bottom,
+          ),
+          child: SafeArea(
+            child: FractionallySizedBox(
+              heightFactor: .92,
+              child: Column(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 4, 20, 14),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            includeWeekdays
+                                ? (pattern == null
+                                      ? 'Novo padrão semanal'
+                                      : 'Editar padrão')
+                                : (isEditing
+                                      ? 'Editar saída de campo'
+                                      : 'Nova saída de campo'),
+                            style: Theme.of(context).textTheme.titleLarge,
                           ),
                         ),
-                        const SizedBox(height: 18),
-                        Text(
-                          'Dias da semana',
-                          style: Theme.of(context).textTheme.titleSmall,
-                        ),
-                        const SizedBox(height: 7),
-                        Wrap(
-                          spacing: 6,
-                          children: List.generate(
-                            7,
-                            (day) => FilterChip(
-                              label: Text(_weekdays[day]),
-                              selected: weekdays.contains(day),
-                              onSelected: (value) => setSheetState(() {
-                                value
-                                    ? weekdays.add(day)
-                                    : weekdays.remove(day);
-                              }),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        ListTile(
-                          contentPadding: EdgeInsets.zero,
-                          leading: const Icon(Icons.event_available_outlined),
-                          title: const Text('Válido a partir de'),
-                          subtitle: Text(
-                            validFrom == null
-                                ? 'Sem data inicial'
-                                : _longDate(validFrom!),
-                          ),
-                          trailing: validFrom == null
-                              ? null
-                              : IconButton(
-                                  tooltip: 'Remover data inicial',
-                                  onPressed: () =>
-                                      setSheetState(() => validFrom = null),
-                                  icon: const Icon(Icons.clear_rounded),
-                                ),
-                          onTap: () async {
-                            final picked = await showDatePicker(
-                              context: context,
-                              initialDate: validFrom ?? DateTime.now(),
-                              firstDate: DateTime(2020),
-                              lastDate: DateTime(2100),
-                            );
-                            if (picked != null) {
-                              setSheetState(() {
-                                validFrom = picked;
-                                if (validThrough != null &&
-                                    validThrough!.isBefore(picked)) {
-                                  validThrough = null;
-                                }
-                              });
-                            }
-                          },
-                        ),
-                      ] else ...[
-                        ListTile(
-                          contentPadding: EdgeInsets.zero,
-                          leading: const Icon(Icons.calendar_today_outlined),
-                          title: const Text('Data'),
-                          subtitle: Text(_longDate(date)),
-                          onTap: () async {
-                            final picked = await showDatePicker(
-                              context: context,
-                              initialDate: date,
-                              firstDate: DateTime(2020),
-                              lastDate: DateTime(2100),
-                            );
-                            if (picked != null) {
-                              setSheetState(() => date = picked);
-                            }
-                          },
+                        IconButton(
+                          onPressed: () => Navigator.pop(sheetContext),
+                          icon: const Icon(Icons.close_rounded),
                         ),
                       ],
-                      ListTile(
-                        contentPadding: EdgeInsets.zero,
-                        leading: const Icon(Icons.schedule_rounded),
-                        title: const Text('Horário'),
-                        subtitle: Text(
-                          time.isEmpty ? 'Escolher horário' : time,
-                        ),
-                        onTap: () async {
-                          final picked = await showTimePicker(
-                            context: context,
-                            initialTime: _parseTime(time),
-                          );
-                          if (picked != null) {
-                            setSheetState(() => time = _timeString(picked));
-                          }
-                        },
-                      ),
-                      if (includeWeekdays)
-                        ListTile(
-                          contentPadding: EdgeInsets.zero,
-                          leading: const Icon(Icons.event_busy_outlined),
-                          title: const Text('Válido até'),
-                          subtitle: Text(
-                            validThrough == null
-                                ? 'Sem data final'
-                                : _longDate(validThrough!),
+                    ),
+                  ),
+                  Expanded(
+                    child: ListView(
+                      padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                      children: [
+                        if (includeWeekdays) ...[
+                          TextField(
+                            controller: nameController,
+                            textCapitalization: TextCapitalization.sentences,
+                            decoration: const InputDecoration(
+                              labelText: 'Nome do padrão',
+                            ),
                           ),
-                          trailing: validThrough == null
-                              ? null
-                              : IconButton(
-                                  tooltip: 'Remover data final',
-                                  onPressed: () =>
-                                      setSheetState(() => validThrough = null),
-                                  icon: const Icon(Icons.clear_rounded),
-                                ),
-                          onTap: () async {
-                            final firstValidDate = validFrom ?? DateTime(2020);
-                            final suggestedEnd =
-                                validThrough ??
-                                DateTime.now().add(const Duration(days: 90));
-                            final picked = await showDatePicker(
-                              context: context,
-                              initialDate: suggestedEnd.isBefore(firstValidDate)
-                                  ? firstValidDate
-                                  : suggestedEnd,
-                              firstDate: firstValidDate,
-                              lastDate: DateTime(2100),
-                            );
-                            if (picked != null) {
-                              setSheetState(() => validThrough = picked);
-                            }
-                          },
-                        ),
-                      DropdownButtonFormField<int?>(
-                        key: ValueKey('local-$locationId'),
-                        initialValue: locationId,
-                        decoration: const InputDecoration(
-                          labelText: 'Ponto de encontro',
-                        ),
-                        items: [
-                          const DropdownMenuItem<int?>(
-                            value: null,
-                            child: Text('A definir'),
+                          const SizedBox(height: 18),
+                          Text(
+                            'Dias da semana',
+                            style: Theme.of(context).textTheme.titleSmall,
                           ),
-                          ...locations.map(
-                            (local) => DropdownMenuItem<int?>(
-                              value: local.id,
-                              child: Text(
-                                local.name,
-                                overflow: TextOverflow.ellipsis,
+                          const SizedBox(height: 7),
+                          Wrap(
+                            spacing: 6,
+                            children: List.generate(
+                              7,
+                              (day) => FilterChip(
+                                label: Text(_weekdays[day]),
+                                selected: weekdays.contains(day),
+                                onSelected: (value) => setSheetState(() {
+                                  value
+                                      ? weekdays.add(day)
+                                      : weekdays.remove(day);
+                                }),
                               ),
                             ),
                           ),
-                        ],
-                        onChanged: (value) =>
-                            setSheetState(() => locationId = value),
-                      ),
-                      if (calendar.canManageLocations)
-                        Align(
-                          alignment: Alignment.centerLeft,
-                          child: TextButton.icon(
-                            onPressed: () async {
-                              final locationData = await _showLocationForm(
-                                sheetContext,
+                          const SizedBox(height: 12),
+                          ListTile(
+                            contentPadding: EdgeInsets.zero,
+                            leading: const Icon(Icons.event_available_outlined),
+                            title: const Text('Válido a partir de'),
+                            subtitle: Text(
+                              validFrom == null
+                                  ? 'Sem data inicial'
+                                  : _longDate(validFrom!),
+                            ),
+                            trailing: validFrom == null
+                                ? null
+                                : IconButton(
+                                    tooltip: 'Remover data inicial',
+                                    onPressed: () =>
+                                        setSheetState(() => validFrom = null),
+                                    icon: const Icon(Icons.clear_rounded),
+                                  ),
+                            onTap: () async {
+                              final picked = await showDatePicker(
+                                context: context,
+                                initialDate: validFrom ?? DateTime.now(),
+                                firstDate: DateTime(2020),
+                                lastDate: DateTime(2100),
                               );
-                              if (locationData == null || !mounted) return;
-                              try {
-                                final location = await ref
-                                    .read(mobileAppControllerProvider.notifier)
-                                    .createFieldLocation(
-                                      locationData,
-                                      month: _monthKey,
-                                    );
+                              if (picked != null) {
                                 setSheetState(() {
-                                  locations.add(location);
-                                  locationId = location.id;
+                                  validFrom = picked;
+                                  if (validThrough != null &&
+                                      validThrough!.isBefore(picked)) {
+                                    validThrough = null;
+                                  }
                                 });
-                              } on Object catch (error) {
-                                if (mounted) {
-                                  _showMessage(
-                                    _friendlyError(error),
-                                    isError: true,
-                                  );
-                                }
                               }
                             },
-                            icon: const Icon(Icons.add_location_alt_outlined),
-                            label: const Text('Adicionar ponto de encontro'),
                           ),
+                        ] else ...[
+                          ListTile(
+                            contentPadding: EdgeInsets.zero,
+                            leading: const Icon(Icons.calendar_today_outlined),
+                            title: const Text('Data'),
+                            subtitle: Text(_longDate(date)),
+                            onTap: () async {
+                              final picked = await showDatePicker(
+                                context: context,
+                                initialDate: date,
+                                firstDate: DateTime(2020),
+                                lastDate: DateTime(2100),
+                              );
+                              if (picked != null) {
+                                setSheetState(() => date = picked);
+                              }
+                            },
+                          ),
+                        ],
+                        ListTile(
+                          contentPadding: EdgeInsets.zero,
+                          leading: const Icon(Icons.schedule_rounded),
+                          title: const Text('Horário'),
+                          subtitle: Text(
+                            time.isEmpty ? 'Escolher horário' : time,
+                          ),
+                          onTap: () async {
+                            final picked = await showTimePicker(
+                              context: context,
+                              initialTime: _parseTime(time),
+                            );
+                            if (picked != null) {
+                              setSheetState(() => time = _timeString(picked));
+                            }
+                          },
                         ),
-                      const SizedBox(height: 12),
-                      if (selectableLeaders.isNotEmpty)
-                        DropdownButtonFormField<String?>(
-                          key: ValueKey('leader-$leader'),
-                          initialValue:
-                              leader.isEmpty ||
-                                  !selectableLeaders.contains(leader)
-                              ? null
-                              : leader,
+                        if (includeWeekdays)
+                          ListTile(
+                            contentPadding: EdgeInsets.zero,
+                            leading: const Icon(Icons.event_busy_outlined),
+                            title: const Text('Válido até'),
+                            subtitle: Text(
+                              validThrough == null
+                                  ? 'Sem data final'
+                                  : _longDate(validThrough!),
+                            ),
+                            trailing: validThrough == null
+                                ? null
+                                : IconButton(
+                                    tooltip: 'Remover data final',
+                                    onPressed: () => setSheetState(
+                                      () => validThrough = null,
+                                    ),
+                                    icon: const Icon(Icons.clear_rounded),
+                                  ),
+                            onTap: () async {
+                              final firstValidDate =
+                                  validFrom ?? DateTime(2020);
+                              final suggestedEnd =
+                                  validThrough ??
+                                  DateTime.now().add(const Duration(days: 90));
+                              final picked = await showDatePicker(
+                                context: context,
+                                initialDate:
+                                    suggestedEnd.isBefore(firstValidDate)
+                                    ? firstValidDate
+                                    : suggestedEnd,
+                                firstDate: firstValidDate,
+                                lastDate: DateTime(2100),
+                              );
+                              if (picked != null) {
+                                setSheetState(() => validThrough = picked);
+                              }
+                            },
+                          ),
+                        DropdownButtonFormField<int?>(
+                          key: ValueKey('local-$locationId'),
+                          initialValue: locationId,
                           decoration: const InputDecoration(
-                            labelText: 'Dirigente',
+                            labelText: 'Ponto de encontro',
                           ),
                           items: [
-                            const DropdownMenuItem<String?>(
+                            const DropdownMenuItem<int?>(
                               value: null,
-                              child: Text('Sem dirigente definido'),
+                              child: Text('A definir'),
                             ),
-                            ...selectableLeaders.map(
-                              (name) => DropdownMenuItem<String?>(
-                                value: name,
-                                child: Text(name),
+                            ...locations.map(
+                              (local) => DropdownMenuItem<int?>(
+                                value: local.id,
+                                child: Text(
+                                  local.name,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
                               ),
                             ),
                           ],
                           onChanged: (value) =>
-                              setSheetState(() => leader = value ?? ''),
-                        )
-                      else
-                        TextFormField(
-                          initialValue: leader,
-                          textCapitalization: TextCapitalization.words,
-                          decoration: const InputDecoration(
-                            labelText: 'Dirigente',
+                              setSheetState(() => locationId = value),
+                        ),
+                        ...() {
+                          final selected = locations
+                              .where((local) => local.id == locationId)
+                              .firstOrNull;
+                          if (selected == null) return <Widget>[];
+                          final lines = [
+                            selected.address,
+                            if (selected.reference.isNotEmpty)
+                              'Ref.: ${selected.reference}',
+                          ].where((line) => line.isNotEmpty);
+                          return <Widget>[
+                            for (final line in lines)
+                              Padding(
+                                padding: const EdgeInsets.only(top: 4),
+                                child: Text(
+                                  line,
+                                  style: Theme.of(context).textTheme.bodySmall,
+                                ),
+                              ),
+                          ];
+                        }(),
+                        if (calendar.canManageLocations)
+                          Align(
+                            alignment: Alignment.centerLeft,
+                            child: TextButton.icon(
+                              onPressed: () async {
+                                final locationData = await _showLocationForm(
+                                  sheetContext,
+                                );
+                                if (locationData == null || !mounted) return;
+                                try {
+                                  final location = await ref
+                                      .read(
+                                        mobileAppControllerProvider.notifier,
+                                      )
+                                      .createFieldLocation(
+                                        locationData,
+                                        month: _monthKey,
+                                      );
+                                  setSheetState(() {
+                                    locations.add(location);
+                                    locationId = location.id;
+                                  });
+                                } on Object catch (error) {
+                                  if (mounted) {
+                                    _showMessage(
+                                      _friendlyError(error),
+                                      isError: true,
+                                    );
+                                  }
+                                }
+                              },
+                              icon: const Icon(Icons.add_location_alt_outlined),
+                              label: const Text('Adicionar ponto de encontro'),
+                            ),
                           ),
-                          onChanged: (value) =>
-                              setSheetState(() => leader = value),
-                        ),
-                      const SizedBox(height: 18),
-                      SwitchListTile.adaptive(
-                        contentPadding: EdgeInsets.zero,
-                        title: const Text('Todos os grupos'),
-                        subtitle: const Text(
-                          'Esta saída ocupa o horário da congregação inteira.',
-                        ),
-                        value: allGroups,
-                        onChanged: (value) =>
-                            setSheetState(() => allGroups = value),
-                      ),
-                      if (!allGroups) ...[
-                        const SizedBox(height: 6),
-                        Text(
-                          'Designar grupos',
-                          style: Theme.of(context).textTheme.titleSmall,
-                        ),
-                        const SizedBox(height: 7),
-                        if (calendar.groups.isEmpty)
-                          Text(
-                            'Nenhum grupo ativo foi cadastrado.',
-                            style: Theme.of(context).textTheme.bodySmall,
+                        const SizedBox(height: 12),
+                        if (selectableLeaders.isNotEmpty)
+                          DropdownButtonFormField<String?>(
+                            key: ValueKey('leader-$leader'),
+                            initialValue:
+                                leader.isEmpty ||
+                                    !selectableLeaders.contains(leader)
+                                ? null
+                                : leader,
+                            decoration: const InputDecoration(
+                              labelText: 'Dirigente',
+                            ),
+                            items: [
+                              const DropdownMenuItem<String?>(
+                                value: null,
+                                child: Text('Sem dirigente definido'),
+                              ),
+                              ...selectableLeaders.map(
+                                (name) => DropdownMenuItem<String?>(
+                                  value: name,
+                                  child: Text(name),
+                                ),
+                              ),
+                            ],
+                            onChanged: (value) =>
+                                setSheetState(() => leader = value ?? ''),
                           )
                         else
-                          Wrap(
-                            spacing: 7,
-                            runSpacing: 2,
-                            children: calendar.groups
-                                .map(
-                                  (group) => FilterChip(
-                                    label: Text(group.name),
-                                    selected: groupIds.contains(group.id),
-                                    avatar: CircleAvatar(
-                                      backgroundColor: group.color,
-                                      radius: 7,
-                                    ),
-                                    onSelected: (value) => setSheetState(() {
-                                      value
-                                          ? groupIds.add(group.id)
-                                          : groupIds.remove(group.id);
-                                    }),
-                                  ),
-                                )
-                                .toList(growable: false),
+                          TextFormField(
+                            initialValue: leader,
+                            textCapitalization: TextCapitalization.words,
+                            decoration: const InputDecoration(
+                              labelText: 'Dirigente',
+                            ),
+                            onChanged: (value) =>
+                                setSheetState(() => leader = value),
                           ),
-                      ],
-                      if (!includeWeekdays) ...[
-                        const SizedBox(height: 16),
-                        CardSuggestionsPanel(
-                          weekday: date.weekday % 7,
-                          requestKey: outingId != null
-                              ? 'outing-$outingId'
-                              : '${_dateKey(date)}|${leader.trim()}|${allGroups ? '' : (groupIds.toList()..sort()).join(',')}',
-                          loader: () {
-                            final controller = ref.read(
-                              mobileAppControllerProvider.notifier,
-                            );
-                            return outingId != null
-                                ? controller.loadOutingCardSuggestions(outingId)
-                                : controller.loadDraftCardSuggestions(
-                                    date: _dateKey(date),
-                                    leader: leader,
-                                    groupIds: allGroups
-                                        ? const []
-                                        : (groupIds.toList()..sort()),
-                                  );
-                          },
-                        ),
-                      ],
-                      const SizedBox(height: 12),
-                      TextField(
-                        controller: notesController,
-                        minLines: 2,
-                        maxLines: 4,
-                        textCapitalization: TextCapitalization.sentences,
-                        decoration: const InputDecoration(
-                          labelText: 'Observações',
-                        ),
-                      ),
-                      if (includeWeekdays && pattern != null) ...[
-                        const SizedBox(height: 12),
+                        const SizedBox(height: 18),
                         SwitchListTile.adaptive(
                           contentPadding: EdgeInsets.zero,
-                          title: const Text('Padrão ativo'),
-                          value: patternIsActive,
+                          title: const Text('Todos os grupos'),
+                          subtitle: const Text(
+                            'Esta saída ocupa o horário da congregação inteira.',
+                          ),
+                          value: allGroups,
                           onChanged: (value) =>
-                              setSheetState(() => patternIsActive = value),
+                              setSheetState(() => allGroups = value),
+                        ),
+                        if (!allGroups) ...[
+                          const SizedBox(height: 6),
+                          Text(
+                            'Designar grupos',
+                            style: Theme.of(context).textTheme.titleSmall,
+                          ),
+                          const SizedBox(height: 7),
+                          if (calendar.groups.isEmpty)
+                            Text(
+                              'Nenhum grupo ativo foi cadastrado.',
+                              style: Theme.of(context).textTheme.bodySmall,
+                            )
+                          else
+                            Wrap(
+                              spacing: 7,
+                              runSpacing: 2,
+                              children: calendar.groups
+                                  .map(
+                                    (group) => FilterChip(
+                                      label: Text(group.name),
+                                      selected: groupIds.contains(group.id),
+                                      avatar: CircleAvatar(
+                                        backgroundColor: group.color,
+                                        radius: 7,
+                                      ),
+                                      onSelected: (value) => setSheetState(() {
+                                        value
+                                            ? groupIds.add(group.id)
+                                            : groupIds.remove(group.id);
+                                      }),
+                                    ),
+                                  )
+                                  .toList(growable: false),
+                            ),
+                        ],
+                        if (!includeWeekdays) ...[
+                          const SizedBox(height: 16),
+                          CardSuggestionsPanel(
+                            weekday: date.weekday % 7,
+                            requestKey: outingId != null
+                                ? 'outing-$outingId'
+                                : '${_dateKey(date)}|${leader.trim()}|${allGroups ? '' : (groupIds.toList()..sort()).join(',')}',
+                            loader: () {
+                              final controller = ref.read(
+                                mobileAppControllerProvider.notifier,
+                              );
+                              return outingId != null
+                                  ? controller.loadOutingCardSuggestions(
+                                      outingId,
+                                    )
+                                  : controller.loadDraftCardSuggestions(
+                                      date: _dateKey(date),
+                                      leader: leader,
+                                      groupIds: allGroups
+                                          ? const []
+                                          : (groupIds.toList()..sort()),
+                                    );
+                            },
+                          ),
+                        ],
+                        if (streetPoints.isNotEmpty) ...[
+                          const SizedBox(height: 16),
+                          _StreetPointsList(points: streetPoints),
+                        ],
+                        const SizedBox(height: 12),
+                        TextField(
+                          controller: notesController,
+                          key: const ValueKey('outing-notes-field'),
+                          scrollPadding: const EdgeInsets.only(bottom: 120),
+                          minLines: 2,
+                          maxLines: 4,
+                          textCapitalization: TextCapitalization.sentences,
+                          decoration: const InputDecoration(
+                            labelText: 'Observações',
+                          ),
+                        ),
+                        if (includeWeekdays && pattern != null) ...[
+                          const SizedBox(height: 12),
+                          SwitchListTile.adaptive(
+                            contentPadding: EdgeInsets.zero,
+                            title: const Text('Padrão ativo'),
+                            value: patternIsActive,
+                            onChanged: (value) =>
+                                setSheetState(() => patternIsActive = value),
+                          ),
+                        ],
+                        const SizedBox(height: 20),
+                        FilledButton.icon(
+                          onPressed: () {
+                            if (time.isEmpty) {
+                              _showMessage(
+                                'Escolha um horário.',
+                                isError: true,
+                              );
+                              return;
+                            }
+                            if (includeWeekdays && weekdays.isEmpty) {
+                              _showMessage(
+                                'Escolha ao menos um dia da semana.',
+                                isError: true,
+                              );
+                              return;
+                            }
+                            final values = <String, Object?>{
+                              if (includeWeekdays) ...{
+                                'name': nameController.text.trim(),
+                                'weekdays': weekdays.toList()..sort(),
+                                'valid_from': validFrom == null
+                                    ? null
+                                    : _dateKey(validFrom!),
+                                'valid_through': validThrough == null
+                                    ? null
+                                    : _dateKey(validThrough!),
+                                if (pattern != null)
+                                  'is_active': patternIsActive,
+                              } else
+                                'date': _dateKey(date),
+                              'time': time,
+                              'leader': leader.trim(),
+                              'notes': notesController.text.trim(),
+                              'location_id': locationId,
+                              'all_groups': allGroups,
+                              'group_ids': allGroups
+                                  ? <int>[]
+                                  : (groupIds.toList()..sort()),
+                            };
+                            Navigator.pop(sheetContext, values);
+                          },
+                          icon: const Icon(Icons.check_rounded),
+                          label: Text(
+                            includeWeekdays ? 'Salvar padrão' : 'Salvar saída',
+                          ),
                         ),
                       ],
-                      const SizedBox(height: 20),
-                      FilledButton.icon(
-                        onPressed: () {
-                          if (time.isEmpty) {
-                            _showMessage('Escolha um horário.', isError: true);
-                            return;
-                          }
-                          if (includeWeekdays && weekdays.isEmpty) {
-                            _showMessage(
-                              'Escolha ao menos um dia da semana.',
-                              isError: true,
-                            );
-                            return;
-                          }
-                          final values = <String, Object?>{
-                            if (includeWeekdays) ...{
-                              'name': nameController.text.trim(),
-                              'weekdays': weekdays.toList()..sort(),
-                              'valid_from': validFrom == null
-                                  ? null
-                                  : _dateKey(validFrom!),
-                              'valid_through': validThrough == null
-                                  ? null
-                                  : _dateKey(validThrough!),
-                              if (pattern != null) 'is_active': patternIsActive,
-                            } else
-                              'date': _dateKey(date),
-                            'time': time,
-                            'leader': leader.trim(),
-                            'notes': notesController.text.trim(),
-                            'location_id': locationId,
-                            'all_groups': allGroups,
-                            'group_ids': allGroups
-                                ? <int>[]
-                                : (groupIds.toList()..sort()),
-                          };
-                          Navigator.pop(sheetContext, values);
-                        },
-                        icon: const Icon(Icons.check_rounded),
-                        label: Text(
-                          includeWeekdays ? 'Salvar padrão' : 'Salvar saída',
-                        ),
-                      ),
-                    ],
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
@@ -1365,6 +1426,7 @@ class _FieldOutingsScreenState extends ConsumerState<FieldOutingsScreen> {
               TextField(
                 controller: notesController,
                 textCapitalization: TextCapitalization.sentences,
+                scrollPadding: const EdgeInsets.only(bottom: 120),
                 decoration: const InputDecoration(labelText: 'Observações'),
               ),
             ],
@@ -1867,6 +1929,51 @@ class _FieldOutingsScreenState extends ConsumerState<FieldOutingsScreen> {
     'dezembro',
   ];
   static const _weekdays = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
+}
+
+/// Trechos a que a saída se refere: cartão, ponto de entrada e ruas; quando o
+/// ponto tem local próprio, endereço e referência para reconhecê-lo.
+class _StreetPointsList extends StatelessWidget {
+  const _StreetPointsList({required this.points});
+
+  final List<FieldOutingStreetPoint> points;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final muted = theme.textTheme.bodySmall?.copyWith(
+      color: theme.colorScheme.onSurfaceVariant,
+    );
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'TRECHOS DESTA SAÍDA',
+          style: theme.textTheme.labelSmall?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
+            letterSpacing: 0.4,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        for (final point in points)
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(point.label, style: theme.textTheme.bodyMedium),
+                if (point.streets.isNotEmpty)
+                  Text(point.streets.join(', '), style: muted),
+                if ((point.location?.address ?? '').isNotEmpty)
+                  Text(point.location!.address, style: muted),
+                if ((point.location?.reference ?? '').isNotEmpty)
+                  Text('Ref.: ${point.location!.reference}', style: muted),
+              ],
+            ),
+          ),
+      ],
+    );
+  }
 }
 
 class _FieldMessage extends StatelessWidget {

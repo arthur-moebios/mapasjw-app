@@ -14,6 +14,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../data/mobile_api.dart';
 import '../data/pending_route_store.dart';
 import '../models/mobile_models.dart';
+import '../models/publication_citation.dart';
 import '../services/route_tracking_service.dart';
 
 final mobileApiProvider = Provider<MobileApi>((ref) => MobileApi());
@@ -1347,6 +1348,37 @@ class MobileAppController extends AsyncNotifier<MobileAppState> {
       condominiumId: condominiumId,
       campaignId: campaignId,
     );
+  }
+
+  final Map<int, PublicationCatalog> _publicationCatalogs = {};
+
+  /// Catálogo de publicações (v2), em cache por congregação durante a sessão.
+  /// Falha, 404 (servidor antigo) ou lista vazia: usa o catálogo antigo do
+  /// detalhe do condomínio, sem cachear a falha.
+  Future<PublicationCatalog> loadPublicationCatalog(
+    CondominiumDetail fallbackDetail,
+  ) async {
+    final fallback = PublicationCatalog.fromLegacy(fallbackDetail.publications);
+    final token = _token;
+    final congregationId = state.value?.selectedCongregationId;
+    if (token == null || congregationId == null) return fallback;
+    final cached = _publicationCatalogs[congregationId];
+    if (cached != null) return cached;
+    try {
+      final catalog = await _api.publicationCatalog(
+        token: token,
+        congregationId: congregationId,
+      );
+      if (catalog.publications.isEmpty) {
+        return PublicationCatalog(
+          themes: catalog.themes,
+          publications: fallback.publications,
+        );
+      }
+      return _publicationCatalogs[congregationId] = catalog;
+    } on Object {
+      return fallback;
+    }
   }
 
   Future<String?> updateApartmentStatus({

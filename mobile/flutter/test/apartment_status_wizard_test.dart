@@ -280,7 +280,8 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Passo 1 · Escrever'), findsOneWidget);
-    expect(find.text('Publicação'), findsOneWidget);
+    expect(find.text('Publicações citadas (0/5)'), findsOneWidget);
+    expect(find.text('Adicionar publicação citada'), findsOneWidget);
     expect(find.text('Assunto'), findsOneWidget);
     expect(find.text('Quem escreveu'), findsOneWidget);
     expect(find.text('Vazio'), findsNothing);
@@ -359,6 +360,114 @@ void main() {
     expect(find.text('Concluída'), findsOneWidget);
     expect(find.text('Entregue. Obrigado!'), findsOneWidget);
   });
+
+  test('history entry parses in-progress fields and tolerates old servers', () {
+    final inProgress = ApartmentDeliveryHistoryEntry.fromJson({
+      'campanha': 'Campanha atual',
+      'em_andamento': true,
+      'status_label': 'Escrita',
+      'written_at': null,
+      'publication': 'Despertai',
+      'subject': 'Família',
+    });
+    expect(inProgress.inProgress, isTrue);
+    expect(inProgress.statusLabel, 'Escrita');
+    expect(inProgress.writtenAt, isNull);
+
+    final legacy = ApartmentDeliveryHistoryEntry.fromJson({
+      'campanha': 'Antiga',
+      'written_at': '01/09/2026',
+    });
+    expect(legacy.inProgress, isFalse);
+    expect(legacy.statusLabel, isNull);
+  });
+
+  testWidgets('history card shows in-progress label instead of Entregue em', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 1800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: ApartmentStatusWizardSheet(
+            detail: _detail(),
+            apartment: _apartment(),
+            loadHistory: () async => [
+              ApartmentDeliveryHistoryEntry.fromJson({
+                'campanha': 'Campanha atual',
+                'em_andamento': true,
+                'status_label': 'Escrita',
+                'written_at': '05/11/2026',
+                'subject': 'Família',
+              }),
+              ApartmentDeliveryHistoryEntry.fromJson({
+                'campanha': 'Campanha antiga',
+                'written_at': '01/09/2026',
+              }),
+            ],
+            onSave: (_) async => null,
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Em andamento · Escrita'), findsOneWidget);
+    expect(find.textContaining('Entregue em 05/11/2026'), findsNothing);
+    expect(find.textContaining('Assunto: Família'), findsOneWidget);
+    expect(find.textContaining('Entregue em 01/09/2026'), findsOneWidget);
+  });
+
+  testWidgets(
+    'envelope step keeps the chosen publication and subject visible',
+    (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: ApartmentStatusWizardSheet(
+              detail: _detail(),
+              apartment: _apartment(status: 'pending'),
+              loadHistory: () async => const [],
+              onSave: (_) async => null,
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.textContaining('Assunto:'), findsNothing);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: ApartmentStatusWizardSheet(
+              key: const ValueKey('with-subject'),
+              detail: _detail(),
+              apartment: ApartmentLetter.fromJson({
+                'id': 12,
+                'apartment_number': '301',
+                'apartment_number_value': '301',
+                'status': 'pending',
+                'status_label': 'Escrita',
+                'status_color': '#eab308',
+                'can_update': true,
+                'publication': 'Despertai',
+                'subject': 'Família',
+              }),
+              loadHistory: () async => const [],
+              onSave: (_) async => null,
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Passo 2 · Envelopar'), findsOneWidget);
+      expect(find.text('Despertai — antiga'), findsOneWidget);
+      expect(find.text('Assunto: Família'), findsOneWidget);
+    },
+  );
 
   testWidgets('clear asks for confirmation before sending reset payload', (
     tester,

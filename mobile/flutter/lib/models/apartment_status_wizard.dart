@@ -1,3 +1,5 @@
+import 'publication_citation.dart';
+
 enum ApartmentWizardStep { write, envelope, deliver, complete }
 
 enum ApartmentWizardAction { write, envelope, deliver, correct, clear }
@@ -81,6 +83,10 @@ class ApartmentStatusWorkflow {
     String publisherName = '',
     String publication = '',
     String subject = '',
+
+    /// null = o usuário não mexeu e não havia citações: a chave `citacoes` não
+    /// vai no payload (o servidor não altera). Lista vazia = limpa.
+    List<PublicationCitation>? citations,
     String writtenBy = '',
     String envelopedBy = '',
     String deliveredBy = '',
@@ -108,8 +114,12 @@ class ApartmentStatusWorkflow {
         if (writtenStatus == null) return null;
         payload.addAll({
           'status': writtenStatus,
-          'publication': _nullableText(publication),
+          'publication': citations == null
+              ? _nullableText(publication)
+              : CitationRules.publicationLabel(citations, publication),
           'subject': _nullableText(subject),
+          if (citations != null)
+            'citacoes': [for (final c in citations) c.toJson()],
           'letter_written_at':
               _textOrNull(currentFields['letter_written_at']) ??
               _dateOnly(today),
@@ -148,6 +158,7 @@ class ApartmentStatusWorkflow {
           'letter_written_at': null,
           'publication': null,
           'subject': null,
+          'citacoes': <Object?>[],
           'observacao': null,
           'delivered_box_guard': false,
           'delivered_doorman_mail': false,

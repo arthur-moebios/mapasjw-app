@@ -1526,6 +1526,7 @@ class _CondominiumLettersScreenState
           detail: detail,
           apartment: apartment,
           today: DateTime.now,
+          loadCatalog: () => controller.loadPublicationCatalog(detail),
           loadHistory: () => controller.loadApartmentHistory(
             condominiumId: detail.id,
             campaignId: detail.campaign!.id,

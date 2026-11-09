@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../models/apartment_status_wizard.dart';
 import '../models/mobile_models.dart';
+import '../models/publication_citation.dart';
+import 'publication_citations_widgets.dart';
 
 class ApartmentStatusWizardSheet extends StatefulWidget {
   const ApartmentStatusWizardSheet({
@@ -11,6 +13,7 @@ class ApartmentStatusWizardSheet extends StatefulWidget {
     required this.loadHistory,
     super.key,
     this.today,
+    this.loadCatalog,
   });
 
   final CondominiumDetail detail;
@@ -18,6 +21,10 @@ class ApartmentStatusWizardSheet extends StatefulWidget {
   final Future<String?> Function(Map<String, Object?> payload) onSave;
   final Future<List<ApartmentDeliveryHistoryEntry>> Function() loadHistory;
   final DateTime Function()? today;
+
+  /// Catálogo v2 de publicações; sem ele (ou se falhar), usa o catálogo
+  /// antigo vindo no detalhe do condomínio.
+  final Future<PublicationCatalog> Function()? loadCatalog;
 
   @override
   State<ApartmentStatusWizardSheet> createState() =>
@@ -31,6 +38,12 @@ class _ApartmentStatusWizardSheetState
   bool _isSaving = false;
   bool _deliveredBoxGuard = false;
   bool _deliveredDoormanMail = false;
+  late final Future<PublicationCatalog> _catalog;
+  late PublicationCatalog _catalogData;
+  List<PublicationCitation> _citations = const [];
+  bool _citationsTouched = false;
+
+  /// Texto antigo de `publication` (registro sem citações).
   String _publication = '';
   String _subject = '';
   String _writtenBy = '';
@@ -46,11 +59,27 @@ class _ApartmentStatusWizardSheetState
     super.initState();
     _apartment = widget.apartment;
     _history = widget.loadHistory();
+    _catalogData = PublicationCatalog.fromLegacy(widget.detail.publications);
+    _catalog = _fetchCatalog();
+    _catalog.then((catalog) {
+      if (mounted) setState(() => _catalogData = catalog);
+    });
     _loadFieldsFromApartment();
   }
 
+  Future<PublicationCatalog> _fetchCatalog() async {
+    final fallback = _catalogData;
+    try {
+      return await (widget.loadCatalog?.call() ?? Future.value(fallback));
+    } on Object {
+      return fallback;
+    }
+  }
+
   void _loadFieldsFromApartment() {
-    _publication = _apartment.publication ?? '';
+    _citations = _apartment.citations;
+    _citationsTouched = false;
+    _publication = _citations.isEmpty ? _apartment.publication ?? '' : '';
     _subject = _apartment.subject ?? '';
     _writtenBy = _apartment.writtenBy ?? widget.detail.publisherName;
     _envelopedBy = _apartment.envelopedBy ?? widget.detail.publisherName;
@@ -69,6 +98,9 @@ class _ApartmentStatusWizardSheetState
       publisherName: widget.detail.publisherName,
       publication: _publication,
       subject: _subject,
+      citations: _citationsTouched || _apartment.citations.isNotEmpty
+          ? _citations
+          : null,
       writtenBy: _writtenBy,
       envelopedBy: _envelopedBy,
       deliveredBy: _deliveredBy,
@@ -111,6 +143,8 @@ class _ApartmentStatusWizardSheetState
       builder: (context) => _ApartmentDetailsEditor(
         fields: fields,
         statuses: widget.detail.statuses,
+        citations: _apartment.citations,
+        catalog: _catalog,
       ),
     );
     if (result != null && mounted) {
@@ -207,23 +241,28 @@ class _ApartmentStatusWizardSheetState
       case ApartmentWizardStep.write:
         return [
           const _StepHint(
-            text: 'Registre a publicação e o assunto da carta. A data de hoje será usada como data de escrita.',
+            text: 'Registre as publicações citadas e o assunto da carta. A data de hoje será usada como data de escrita.',
           ),
           const SizedBox(height: 14),
-          _suggestedTextField(
-            label: 'Publicação',
-            value: _publication,
-            options: _publicationOptions,
-            onChanged: (value) => setState(() => _publication = value),
-            onSelected: (value) => setState(() => _publication = value),
+          CitedPublicationsEditor(
+            citations: _citations,
+            legacy: _publication,
+            catalog: _catalog,
+            onChanged: (value) => setState(() {
+              _citations = value;
+              _citationsTouched = true;
+            }),
+            onLegacyRemoved: () => setState(() => _publication = ''),
           ),
           const SizedBox(height: 12),
-          _suggestedTextField(
-            label: 'Assunto',
-            value: _subject,
-            options: _topicOptions,
+          SubjectSuggestField(
+            initialValue: _subject,
+            suggestions: (term) => CitationRules.subjectSuggestions(
+              _catalogData.themes,
+              _citations,
+              term,
+            ),
             onChanged: (value) => setState(() => _subject = value),
-            onSelected: (value) => setState(() => _subject = value),
           ),
           const SizedBox(height: 12),
           _personSelector(
@@ -246,6 +285,7 @@ class _ApartmentStatusWizardSheetState
               text: 'Escrita por ${_apartment.writtenBy}',
             ),
           ],
+          ..._letterContentBadges,
           const SizedBox(height: 16),
           _personSelector(
             label: 'Quem envelopou',
@@ -256,6 +296,7 @@ class _ApartmentStatusWizardSheetState
       case ApartmentWizardStep.deliver:
         return [
           _addressCard,
+          ..._letterContentBadges,
           const SizedBox(height: 16),
           if (_canDeliver) ...[
             const _StepHint(text: 'Como a carta foi entregue?'),
@@ -284,13 +325,37 @@ class _ApartmentStatusWizardSheetState
             ),
         ];
       case ApartmentWizardStep.complete:
-        return const [
-          _CompletionCard(
+        return [
+          const _CompletionCard(
             icon: Icons.check_circle_outline_rounded,
             text: 'Entregue. Obrigado!',
           ),
+          ..._letterContentBadges,
         ];
     }
+  }
+
+  /// Publicação e assunto já registrados, para o publicador reler depois de
+  /// avançar de etapa.
+  List<Widget> get _letterContentBadges {
+    final legacy = _apartment.publication?.trim() ?? '';
+    final subject = _apartment.subject?.trim() ?? '';
+    final hasPublications =
+        _apartment.citations.isNotEmpty || legacy.isNotEmpty;
+
+    return [
+      if (hasPublications) ...[
+        const SizedBox(height: 8),
+        CitationReadingList(citations: _apartment.citations, legacy: legacy),
+      ],
+      if (subject.isNotEmpty) ...[
+        const SizedBox(height: 8),
+        _MetadataBadge(
+          icon: Icons.lightbulb_outline_rounded,
+          text: 'Assunto: $subject',
+        ),
+      ],
+    ];
   }
 
   Widget get _addressCard {
@@ -459,38 +524,6 @@ class _ApartmentStatusWizardSheetState
     );
   }
 
-  Widget _suggestedTextField({
-    required String label,
-    required String value,
-    required List<String> options,
-    required ValueChanged<String> onChanged,
-    required ValueChanged<String> onSelected,
-  }) => Autocomplete<String>(
-    initialValue: TextEditingValue(text: value),
-    optionsBuilder: (text) {
-      final query = text.text.trim().toLowerCase();
-      if (query.isEmpty) return options.take(8);
-      return options
-          .where((option) => option.toLowerCase().contains(query))
-          .take(8);
-    },
-    onSelected: onSelected,
-    fieldViewBuilder: (context, controller, focusNode, onFieldSubmitted) =>
-        TextField(
-          controller: controller,
-          focusNode: focusNode,
-          onChanged: onChanged,
-          decoration: InputDecoration(
-            labelText: label,
-            hintText: 'Escolha uma sugestão ou digite',
-            border: const OutlineInputBorder(),
-            suffixIcon: options.isEmpty
-                ? null
-                : const Icon(Icons.arrow_drop_down_rounded),
-          ),
-        ),
-  );
-
   Widget _personSelector({
     required String label,
     required String value,
@@ -535,22 +568,6 @@ class _ApartmentStatusWizardSheetState
         if (name != null) onChanged(name);
       },
     );
-  }
-
-  List<String> get _publicationOptions => widget.detail.publications
-      .map((publication) => publication.label)
-      .toList(growable: false);
-
-  List<String> get _topicOptions {
-    final selected = widget.detail.publications.where((publication) {
-      final query = _publication.trim().toLowerCase();
-      return query.isNotEmpty &&
-          (publication.label.toLowerCase() == query ||
-              publication.title.toLowerCase() == query ||
-              (publication.code.isNotEmpty &&
-                  query.startsWith('${publication.code.toLowerCase()} ')));
-    });
-    return selected.isEmpty ? const [] : selected.first.topics;
   }
 }
 
@@ -696,12 +713,18 @@ class _HistoryCard extends StatelessWidget {
       if (entry.deliveredBoxGuard) 'Caixa/Vigia',
       if (entry.deliveredDoormanMail) 'Porteiro/Correio',
     ];
+    final scheme = Theme.of(context).colorScheme;
+    final statusLabel = entry.statusLabel?.trim() ?? '';
+    final inProgressLabel = statusLabel.isEmpty
+        ? 'Em andamento'
+        : 'Em andamento · $statusLabel';
     final lines = [
       if (entry.writtenBy?.isNotEmpty == true) entry.writtenBy!,
-      if (entry.writtenAt?.isNotEmpty == true) 'Entregue em ${entry.writtenAt}',
+      if (!entry.inProgress && entry.writtenAt?.isNotEmpty == true)
+        'Entregue em ${entry.writtenAt}',
       if (entry.letterWrittenAt?.isNotEmpty == true)
         'Escrita em ${entry.letterWrittenAt}',
-      if (entry.publication?.isNotEmpty == true)
+      if (entry.citations.isEmpty && entry.publication?.isNotEmpty == true)
         'Publicação: ${entry.publication}',
       if (entry.subject?.isNotEmpty == true) 'Assunto: ${entry.subject}',
       if (entry.observation?.isNotEmpty == true)
@@ -728,11 +751,32 @@ class _HistoryCard extends StatelessWidget {
             entry.campaign,
             style: const TextStyle(fontWeight: FontWeight.w800),
           ),
+          if (entry.inProgress) ...[
+            const SizedBox(height: 5),
+            Text(
+              inProgressLabel,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: scheme.primary,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
           if (lines.isNotEmpty) ...[
             const SizedBox(height: 5),
             Text(
               lines.join(' · '),
               style: Theme.of(context).textTheme.bodySmall,
+            ),
+          ],
+          if (entry.citations.isNotEmpty) ...[
+            const SizedBox(height: 6),
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: [
+                for (final citation in entry.citations)
+                  CitationChip(citation: citation, mini: true),
+              ],
             ),
           ],
         ],
@@ -742,10 +786,17 @@ class _HistoryCard extends StatelessWidget {
 }
 
 class _ApartmentDetailsEditor extends StatefulWidget {
-  const _ApartmentDetailsEditor({required this.fields, required this.statuses});
+  const _ApartmentDetailsEditor({
+    required this.fields,
+    required this.statuses,
+    required this.citations,
+    required this.catalog,
+  });
 
   final Map<String, Object?> fields;
   final List<LetterStatusOption> statuses;
+  final List<PublicationCitation> citations;
+  final Future<PublicationCatalog> catalog;
 
   @override
   State<_ApartmentDetailsEditor> createState() =>
@@ -754,12 +805,32 @@ class _ApartmentDetailsEditor extends StatefulWidget {
 
 class _ApartmentDetailsEditorState extends State<_ApartmentDetailsEditor> {
   late final Map<String, Object?> _fields;
+  late List<PublicationCitation> _citations;
+  String _legacy = '';
+  bool _citationsTouched = false;
+  List<String> _themes = const [];
 
   @override
   void initState() {
     super.initState();
     _fields = Map<String, Object?>.from(widget.fields);
+    _citations = widget.citations;
+    _legacy = _citations.isEmpty
+        ? _fields['publication']?.toString() ?? ''
+        : '';
+    widget.catalog
+        .then((catalog) {
+          if (mounted) setState(() => _themes = catalog.themes);
+        })
+        .catchError((Object _) {});
   }
+
+  Map<String, Object?> _result() => {
+    ..._fields,
+    'publication': CitationRules.publicationLabel(_citations, _legacy),
+    if (_citationsTouched || widget.citations.isNotEmpty)
+      'citacoes': [for (final c in _citations) c.toJson()],
+  };
 
   @override
   Widget build(BuildContext context) {
@@ -812,8 +883,28 @@ class _ApartmentDetailsEditorState extends State<_ApartmentDetailsEditor> {
                   _textField('Quem entregou', 'delivered_by'),
                   _textField('Data escrita (AAAA-MM-DD)', 'letter_written_at'),
                   _textField('Data entregue (AAAA-MM-DD)', 'last_sent_at'),
-                  _textField('Publicação', 'publication'),
-                  _textField('Assunto', 'subject'),
+                  CitedPublicationsEditor(
+                    citations: _citations,
+                    legacy: _legacy,
+                    catalog: widget.catalog,
+                    onChanged: (value) => setState(() {
+                      _citations = value;
+                      _citationsTouched = true;
+                    }),
+                    onLegacyRemoved: () => setState(() => _legacy = ''),
+                  ),
+                  const SizedBox(height: 12),
+                  SubjectSuggestField(
+                    initialValue: _fields['subject']?.toString() ?? '',
+                    suggestions: (term) => CitationRules.subjectSuggestions(
+                      _themes,
+                      _citations,
+                      term,
+                    ),
+                    onChanged: (value) => _fields['subject'] =
+                        value.trim().isEmpty ? null : value,
+                  ),
+                  const SizedBox(height: 10),
                   _textField('Observação', 'observacao', maxLines: 3),
                   CheckboxListTile(
                     contentPadding: EdgeInsets.zero,
@@ -846,7 +937,7 @@ class _ApartmentDetailsEditorState extends State<_ApartmentDetailsEditor> {
                 const SizedBox(width: 10),
                 Expanded(
                   child: FilledButton(
-                    onPressed: () => Navigator.pop(context, _fields),
+                    onPressed: () => Navigator.pop(context, _result()),
                     child: const Text('Salvar detalhes'),
                   ),
                 ),

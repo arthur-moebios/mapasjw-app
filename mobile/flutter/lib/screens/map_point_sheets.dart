@@ -369,6 +369,7 @@ class _MapPointFormSheetState extends ConsumerState<MapPointFormSheet> {
               const SizedBox(height: 16),
               TextField(
                 key: const ValueKey('map-point-title'),
+                scrollPadding: const EdgeInsets.fromLTRB(20, 20, 20, 72),
                 controller: _title,
                 enabled: !_saving,
                 textCapitalization: TextCapitalization.sentences,
@@ -380,6 +381,7 @@ class _MapPointFormSheetState extends ConsumerState<MapPointFormSheet> {
               ),
               TextField(
                 key: const ValueKey('map-point-address'),
+                scrollPadding: const EdgeInsets.fromLTRB(20, 20, 20, 72),
                 controller: _address,
                 enabled: !_saving,
                 textCapitalization: TextCapitalization.words,
@@ -391,6 +393,7 @@ class _MapPointFormSheetState extends ConsumerState<MapPointFormSheet> {
               ),
               TextField(
                 key: const ValueKey('map-point-notes'),
+                scrollPadding: const EdgeInsets.fromLTRB(20, 20, 20, 72),
                 controller: _notes,
                 enabled: !_saving,
                 textCapitalization: TextCapitalization.sentences,

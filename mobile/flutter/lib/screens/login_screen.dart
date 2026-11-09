@@ -46,10 +46,8 @@ class LoginScreen extends ConsumerWidget {
                   const SizedBox(height: 8),
                   Text(
                     'Territórios e trajetos, com você no campo.',
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      color: colors.onSurfaceVariant,
-                      height: 1.4,
-                    ),
+                    style: Theme.of(context).textTheme.titleMedium
+                        ?.copyWith(color: colors.onSurfaceVariant, height: 1.4),
                   ),
                   const SizedBox(height: 32),
                   FilledButton.icon(
@@ -87,8 +85,7 @@ class LoginScreen extends ConsumerWidget {
                   const SizedBox(height: 28),
                   _MessageCard(
                     icon: Icons.shield_outlined,
-                    message:
-                        'A localização será solicitada somente quando você tocar em “Minha localização” ou iniciar um trajeto. O acesso em segundo plano é pedido apenas para manter um trajeto ativo com a tela bloqueada.',
+                    message: 'A localização será solicitada somente quando você tocar em “Minha localização” ou iniciar um trajeto. O acesso em segundo plano é pedido apenas para manter um trajeto ativo com a tela bloqueada.',
                   ),
                   const SizedBox(height: 18),
                   Text(
@@ -144,9 +141,8 @@ class _MessageCard extends StatelessWidget {
           Expanded(
             child: Text(
               message,
-              style: Theme.of(
-                context,
-              ).textTheme.bodyMedium?.copyWith(height: 1.45),
+              style: Theme.of(context).textTheme.bodyMedium
+                  ?.copyWith(height: 1.45),
             ),
           ),
         ],
