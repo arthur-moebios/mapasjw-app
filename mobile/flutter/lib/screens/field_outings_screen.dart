@@ -880,8 +880,6 @@ class _FieldOutingsScreenState extends ConsumerState<FieldOutingsScreen> {
       initialAllGroups: outing?.allGroups ?? false,
       includeWeekdays: false,
       isEditing: outing != null,
-      outingId: outing?.id,
-      streetPoints: outing?.streetPoints ?? const [],
       leaders: calendar.leaders,
     );
     if (payload == null || !mounted) return;
@@ -913,9 +911,7 @@ class _FieldOutingsScreenState extends ConsumerState<FieldOutingsScreen> {
     required bool includeWeekdays,
     required bool isEditing,
     required List<String> leaders,
-    int? outingId,
     FieldOutingPattern? pattern,
-    List<FieldOutingStreetPoint> streetPoints = const [],
   }) async {
     final nameController = TextEditingController(text: pattern?.name ?? '');
     final notesController = TextEditingController(text: initialNotes);
@@ -1347,35 +1343,6 @@ class _FieldOutingsScreenState extends ConsumerState<FieldOutingsScreen> {
                                   )
                                   .toList(growable: false),
                             ),
-                        ],
-                        if (!includeWeekdays) ...[
-                          const SizedBox(height: 16),
-                          CardSuggestionsPanel(
-                            weekday: date.weekday % 7,
-                            requestKey: outingId != null
-                                ? 'outing-$outingId'
-                                : '${_dateKey(date)}|${leader.trim()}|${allGroups ? '' : (groupIds.toList()..sort()).join(',')}',
-                            loader: () {
-                              final controller = ref.read(
-                                mobileAppControllerProvider.notifier,
-                              );
-                              return outingId != null
-                                  ? controller.loadOutingCardSuggestions(
-                                      outingId,
-                                    )
-                                  : controller.loadDraftCardSuggestions(
-                                      date: _dateKey(date),
-                                      leader: leader,
-                                      groupIds: allGroups
-                                          ? const []
-                                          : (groupIds.toList()..sort()),
-                                    );
-                            },
-                          ),
-                        ],
-                        if (streetPoints.isNotEmpty) ...[
-                          const SizedBox(height: 16),
-                          _StreetPointsList(points: streetPoints),
                         ],
                         const SizedBox(height: 12),
                         TextField(

@@ -584,8 +584,9 @@ void main() {
       await tester.tap(find.text('Editar'));
       await tester.pumpAndSettle();
 
-      expect(find.text('TRECHOS DESTA SAÍDA'), findsNWidgets(2));
-      expect(find.text('Rua Alfa, Rua Beta'), findsNWidgets(2));
+      // A edição não mostra mais trechos nem cartões sugeridos: só o card da saída.
+      expect(find.text('TRECHOS DESTA SAÍDA'), findsOneWidget);
+      expect(find.text('Rua Alfa, Rua Beta'), findsOneWidget);
 
       final notes = find.byKey(const ValueKey('outing-notes-field'));
       await tester.dragUntilVisible(
