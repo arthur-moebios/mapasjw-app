@@ -519,9 +519,12 @@ class MobileAppController extends AsyncNotifier<MobileAppState> {
         .map((item) => Congregation.fromJson(Map<String, dynamic>.from(item)))
         .toList(growable: false);
     final isSuperAdmin = bootstrap['is_superadmin'] == true;
-    final selectedId = isSuperAdmin
+    // Superadmin também abre direto na própria congregação, se ela existir na lista.
+    final homeId = (bootstrap['selected_congregation_id'] as num?)?.toInt();
+    final selectedId =
+        isSuperAdmin && !congregations.any((item) => item.id == homeId)
         ? null
-        : (bootstrap['selected_congregation_id'] as num?)?.toInt();
+        : homeId;
 
     var result = MobileAppState(
       isAuthenticated: true,
