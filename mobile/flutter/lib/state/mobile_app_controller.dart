@@ -14,6 +14,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../data/mobile_api.dart';
 import '../data/pending_route_store.dart';
 import '../models/mobile_models.dart';
+import '../models/outing_work.dart';
 import '../models/publication_citation.dart';
 import '../services/route_tracking_service.dart';
 
@@ -1005,6 +1006,49 @@ class MobileAppController extends AsyncNotifier<MobileAppState> {
     );
     await refreshFieldCalendar(month: month, force: true);
     return location;
+  }
+
+  Future<FieldLocation> updateFieldLocation(
+    int locationId,
+    Map<String, Object?> data, {
+    required String month,
+  }) async {
+    final (token, congregationId) = _fieldSession();
+    final location = await _api.updateFieldLocation(
+      token: token,
+      congregationId: congregationId,
+      locationId: locationId,
+      data: data,
+    );
+    await refreshFieldCalendar(month: month, force: true);
+    return location;
+  }
+
+  Future<OutingWorkData> loadOutingWorkCandidates(int outingId) async {
+    final (token, congregationId) = _fieldSession();
+    return _api.outingWorkCandidates(
+      token: token,
+      congregationId: congregationId,
+      outingId: outingId,
+    );
+  }
+
+  /// Salva "Onde foi trabalhado?" e atualiza o calendário e a lista de cartões
+  /// (a conclusão muda a situação do cartão de rua).
+  Future<OutingWorkResult> saveOutingWork(
+    int outingId,
+    Map<String, Object?> data, {
+    required String month,
+  }) async {
+    final (token, congregationId) = _fieldSession();
+    final result = await _api.saveOutingWork(
+      token: token,
+      congregationId: congregationId,
+      outingId: outingId,
+      data: data,
+    );
+    await refreshFieldCalendar(month: month, force: true);
+    return result;
   }
 
   Future<void> deleteFieldOuting(int outingId, {required String month}) async {

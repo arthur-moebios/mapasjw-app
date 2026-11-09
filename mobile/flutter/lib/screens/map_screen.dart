@@ -206,7 +206,8 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                 children: [
                   const Text('Mapas JW'),
                   Text(
-                    state.selectedCongregation?.name ?? 'Sua congregação',
+                    _congregationLine(state.selectedCongregation) ??
+                        'Sua congregação',
                     style: Theme.of(context).textTheme.labelMedium?.copyWith(
                       color: Theme.of(context).colorScheme.onSurfaceVariant,
                       fontWeight: FontWeight.w500,
@@ -1385,7 +1386,8 @@ class _AccountTab extends ConsumerWidget {
                 leading: const Icon(Icons.apartment_outlined),
                 title: const Text('Congregação ativa'),
                 subtitle: Text(
-                  state.selectedCongregation?.name ?? 'Nenhuma selecionada',
+                  _congregationLine(state.selectedCongregation) ??
+                      'Nenhuma selecionada',
                 ),
               ),
             ],
@@ -1669,4 +1671,13 @@ class _StateMessage extends StatelessWidget {
       ),
     ),
   );
+}
+
+/// Nome da congregação e, quando o servidor informa, circuito e cidade.
+String? _congregationLine(Congregation? congregation) {
+  if (congregation == null) return null;
+  final subtitle = congregation.subtitle;
+  return subtitle.isEmpty
+      ? congregation.name
+      : '${congregation.name} · $subtitle';
 }

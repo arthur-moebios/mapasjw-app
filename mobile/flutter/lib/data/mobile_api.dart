@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'package:dio/dio.dart';
 
 import '../models/mobile_models.dart';
+import '../models/outing_work.dart';
 import '../models/publication_citation.dart';
 
 class MobileApi {
@@ -214,6 +215,50 @@ class MobileApi {
     return FieldLocation.fromJson(
       Map<String, dynamic>.from(response.data?['location'] as Map? ?? const {}),
     );
+  }
+
+  Future<FieldLocation> updateFieldLocation({
+    required String token,
+    required int congregationId,
+    required int locationId,
+    required Map<String, Object?> data,
+  }) async {
+    final response = await _dio.patch<Map<String, dynamic>>(
+      '/mobile/field-locations/$locationId',
+      data: data,
+      options: _authenticated(token, congregationId),
+    );
+    return FieldLocation.fromJson(
+      Map<String, dynamic>.from(response.data?['location'] as Map? ?? const {}),
+    );
+  }
+
+  /// Cartões de rua perto do local da saída, com ruas e linhas para o mapa.
+  Future<OutingWorkData> outingWorkCandidates({
+    required String token,
+    required int congregationId,
+    required int outingId,
+  }) async {
+    final response = await _dio.get<Map<String, dynamic>>(
+      '/mobile/field-outings/$outingId/work-candidates',
+      options: _authenticated(token, congregationId),
+    );
+    return OutingWorkData.fromJson(response.data ?? const {});
+  }
+
+  /// Salva o registro por ruas (todas as ruas de um cartão conclui o cartão).
+  Future<OutingWorkResult> saveOutingWork({
+    required String token,
+    required int congregationId,
+    required int outingId,
+    required Map<String, Object?> data,
+  }) async {
+    final response = await _dio.post<Map<String, dynamic>>(
+      '/mobile/field-outings/$outingId/work-streets',
+      data: data,
+      options: _authenticated(token, congregationId),
+    );
+    return OutingWorkResult.fromJson(response.data ?? const {});
   }
 
   Future<void> deleteFieldOuting({

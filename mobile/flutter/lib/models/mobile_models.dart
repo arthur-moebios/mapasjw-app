@@ -115,16 +115,31 @@ class Congregation {
     required this.id,
     required this.name,
     required this.slug,
+    this.circuit,
+    this.city,
   });
 
   final int id;
   final String name;
   final String slug;
 
+  /// Circuito e cidade (obrigatórios no cadastro atual; podem faltar em
+  /// respostas de servidores anteriores).
+  final String? circuit;
+  final String? city;
+
+  /// "Circuito · Cidade" para cabeçalhos; vazio quando o servidor não informa.
+  String get subtitle => [
+    circuit,
+    city,
+  ].whereType<String>().where((part) => part.trim().isNotEmpty).join(' · ');
+
   factory Congregation.fromJson(Map<String, dynamic> json) => Congregation(
     id: json['id'] as int,
     name: json['name'] as String? ?? 'Congregação',
     slug: json['slug'] as String? ?? '',
+    circuit: json['circuit'] as String?,
+    city: json['city'] as String?,
   );
 }
 
@@ -1747,6 +1762,10 @@ class FieldLocation {
     this.address = '',
     this.mapsUrl = '',
     this.reference = '',
+    this.lat,
+    this.lng,
+    this.active = true,
+    this.online = false,
   });
 
   final int id;
@@ -1754,6 +1773,16 @@ class FieldLocation {
   final String address;
   final String mapsUrl;
   final String reference;
+  final double? lat;
+  final double? lng;
+
+  /// Locais desativados não aparecem na escolha de locais.
+  final bool active;
+
+  /// Reunião online (Zoom, Meet...): não tem ponto no mapa.
+  final bool online;
+
+  bool get hasPoint => lat != null && lng != null;
 
   factory FieldLocation.fromJson(Map<String, dynamic> json) => FieldLocation(
     id: (json['id'] as num).toInt(),
@@ -1761,6 +1790,10 @@ class FieldLocation {
     address: json['address'] as String? ?? '',
     mapsUrl: json['maps_url'] as String? ?? '',
     reference: json['reference'] as String? ?? '',
+    lat: (json['lat'] as num?)?.toDouble(),
+    lng: (json['lng'] as num?)?.toDouble(),
+    active: json['active'] != false,
+    online: json['online'] == true,
   );
 }
 
@@ -1855,6 +1888,7 @@ class FieldOuting {
     this.streetPoints = const [],
     this.location,
     this.recurrenceId,
+    this.informational = false,
   });
 
   final int id;
@@ -1870,6 +1904,9 @@ class FieldOuting {
   final List<FieldOutingStreetPoint> streetPoints;
   final FieldLocation? location;
   final int? recurrenceId;
+
+  /// Saída online/informativa: não pede o registro "Onde foi trabalhado?".
+  final bool informational;
 
   factory FieldOuting.fromJson(Map<String, dynamic> json) {
     final locationJson = json['location'];
@@ -1909,6 +1946,7 @@ class FieldOuting {
           ? FieldLocation.fromJson(Map<String, dynamic>.from(locationJson))
           : null,
       recurrenceId: (json['recurrence_id'] as num?)?.toInt(),
+      informational: json['informational'] == true,
     );
   }
 }

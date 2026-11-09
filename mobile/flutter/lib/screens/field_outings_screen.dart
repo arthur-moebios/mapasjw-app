@@ -5,12 +5,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:dio/dio.dart';
+import 'package:latlong2/latlong.dart';
 
 import '../data/mobile_api.dart';
 import '../models/mobile_models.dart';
 import '../services/field_schedule_share_service.dart';
 import '../state/mobile_app_controller.dart';
 import 'card_suggestions_panel.dart';
+import 'location_point_picker.dart';
+import 'outing_work_screen.dart';
 
 class FieldOutingsScreen extends ConsumerStatefulWidget {
   const FieldOutingsScreen({super.key});
@@ -85,7 +88,12 @@ class _FieldOutingsScreenState extends ConsumerState<FieldOutingsScreen> {
           Text('Campo', style: Theme.of(context).textTheme.headlineSmall),
           const SizedBox(height: 4),
           Text(
-            app.selectedCongregation?.name ?? 'Saídas, agenda e designações',
+            app.selectedCongregation == null
+                ? 'Saídas, agenda e designações'
+                : [
+                    app.selectedCongregation!.name,
+                    app.selectedCongregation!.subtitle,
+                  ].where((part) => part.isNotEmpty).join(' · '),
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
               color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
@@ -557,6 +565,36 @@ class _FieldOutingsScreenState extends ConsumerState<FieldOutingsScreen> {
                     ),
                     icon: const Icon(Icons.lightbulb_outline_rounded),
                     label: const Text('Cartões sugeridos'),
+                  ),
+                ),
+              if (outing.informational)
+                Padding(
+                  padding: const EdgeInsets.only(top: 6),
+                  child: Text(
+                    'Saída informativa ou online: não há trabalho de rua a '
+                    'registrar, só marque a situação da saída.',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                )
+              else
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: TextButton.icon(
+                    onPressed: () => showOutingWorkScreen(
+                      context,
+                      outingId: outing.id,
+                      month: _monthKey,
+                      canSave:
+                          ref
+                              .watch(mobileAppControllerProvider)
+                              .value
+                              ?.canManageTerritoryCards ??
+                          false,
+                    ),
+                    icon: const Icon(Icons.route_outlined),
+                    label: const Text('Onde foi trabalhado?'),
                   ),
                 ),
               if (outing.notes.isNotEmpty) ...[
@@ -1125,6 +1163,66 @@ class _FieldOutingsScreenState extends ConsumerState<FieldOutingsScreen> {
                               ),
                           ];
                         }(),
+                        if (calendar.canManageLocations &&
+                            locations
+                                .where((local) => local.id == locationId)
+                                .any((local) => !local.online))
+                          Align(
+                            alignment: Alignment.centerLeft,
+                            child: TextButton.icon(
+                              onPressed: () async {
+                                final current = locations.firstWhere(
+                                  (local) => local.id == locationId,
+                                );
+                                final point = await pickLocationPoint(
+                                  sheetContext,
+                                  initial: current.hasPoint
+                                      ? LatLng(current.lat!, current.lng!)
+                                      : null,
+                                );
+                                if (point == null || !mounted) return;
+                                try {
+                                  final updated = await ref
+                                      .read(
+                                        mobileAppControllerProvider.notifier,
+                                      )
+                                      .updateFieldLocation(current.id, {
+                                        'name': current.name,
+                                        'address': current.address,
+                                        'reference': current.reference,
+                                        'maps_url': current.mapsUrl,
+                                        'lat': point.latitude,
+                                        'lng': point.longitude,
+                                      }, month: _monthKey);
+                                  setSheetState(() {
+                                    final index = locations.indexWhere(
+                                      (local) => local.id == updated.id,
+                                    );
+                                    if (index >= 0) locations[index] = updated;
+                                  });
+                                } on Object catch (error) {
+                                  if (mounted) {
+                                    _showMessage(
+                                      _friendlyError(error),
+                                      isError: true,
+                                    );
+                                  }
+                                }
+                              },
+                              icon: const Icon(
+                                Icons.edit_location_alt_outlined,
+                              ),
+                              label: Text(
+                                locations
+                                        .where(
+                                          (local) => local.id == locationId,
+                                        )
+                                        .any((local) => local.hasPoint)
+                                    ? 'Ajustar o ponto no mapa'
+                                    : 'Marcar o ponto no mapa',
+                              ),
+                            ),
+                          ),
                         if (calendar.canManageLocations)
                           Align(
                             alignment: Alignment.centerLeft,
@@ -1132,6 +1230,13 @@ class _FieldOutingsScreenState extends ConsumerState<FieldOutingsScreen> {
                               onPressed: () async {
                                 final locationData = await _showLocationForm(
                                   sheetContext,
+                                  fallbackCenter: locations
+                                      .where((local) => local.hasPoint)
+                                      .map(
+                                        (local) =>
+                                            LatLng(local.lat!, local.lng!),
+                                      )
+                                      .firstOrNull,
                                 );
                                 if (locationData == null || !mounted) return;
                                 try {
@@ -1393,69 +1498,97 @@ class _FieldOutingsScreenState extends ConsumerState<FieldOutingsScreen> {
   }
 
   Future<Map<String, Object?>?> _showLocationForm(
-    BuildContext parentContext,
-  ) async {
+    BuildContext parentContext, {
+    LatLng? fallbackCenter,
+  }) async {
+    LatLng? pickedPoint;
     final nameController = TextEditingController();
     final addressController = TextEditingController();
     final mapsController = TextEditingController();
     final notesController = TextEditingController();
     final result = await showDialog<Map<String, Object?>>(
       context: parentContext,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Novo ponto de encontro'),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: nameController,
-                autofocus: true,
-                textCapitalization: TextCapitalization.words,
-                decoration: const InputDecoration(labelText: 'Nome'),
-              ),
-              TextField(
-                controller: addressController,
-                textCapitalization: TextCapitalization.sentences,
-                decoration: const InputDecoration(labelText: 'Endereço'),
-              ),
-              TextField(
-                controller: mapsController,
-                keyboardType: TextInputType.url,
-                decoration: const InputDecoration(labelText: 'Link do mapa'),
-              ),
-              TextField(
-                controller: notesController,
-                textCapitalization: TextCapitalization.sentences,
-                scrollPadding: const EdgeInsets.only(bottom: 120),
-                decoration: const InputDecoration(labelText: 'Observações'),
-              ),
-            ],
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, setDialogState) => AlertDialog(
+          title: const Text('Novo ponto de encontro'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: nameController,
+                  autofocus: true,
+                  textCapitalization: TextCapitalization.words,
+                  decoration: const InputDecoration(labelText: 'Nome'),
+                ),
+                TextField(
+                  controller: addressController,
+                  textCapitalization: TextCapitalization.sentences,
+                  decoration: const InputDecoration(labelText: 'Endereço'),
+                ),
+                TextField(
+                  controller: mapsController,
+                  keyboardType: TextInputType.url,
+                  decoration: const InputDecoration(labelText: 'Link do mapa'),
+                ),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: TextButton.icon(
+                    onPressed: () async {
+                      final point = await pickLocationPoint(
+                        dialogContext,
+                        initial: pickedPoint,
+                        fallbackCenter:
+                            fallbackCenter ?? const LatLng(-22.45, -43.1),
+                      );
+                      if (point != null) {
+                        setDialogState(() => pickedPoint = point);
+                      }
+                    },
+                    icon: const Icon(Icons.edit_location_alt_outlined),
+                    label: Text(
+                      pickedPoint == null
+                          ? 'Marcar o ponto no mapa'
+                          : 'Ponto marcado (toque para ajustar)',
+                    ),
+                  ),
+                ),
+                TextField(
+                  controller: notesController,
+                  textCapitalization: TextCapitalization.sentences,
+                  scrollPadding: const EdgeInsets.only(bottom: 120),
+                  decoration: const InputDecoration(labelText: 'Observações'),
+                ),
+              ],
+            ),
           ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('Cancelar'),
+            ),
+            FilledButton(
+              onPressed: () {
+                if (nameController.text.trim().isEmpty) {
+                  _showMessage(
+                    'Informe o nome do ponto de encontro.',
+                    isError: true,
+                  );
+                  return;
+                }
+                Navigator.pop(dialogContext, {
+                  'name': nameController.text.trim(),
+                  'address': addressController.text.trim(),
+                  'maps_url': mapsController.text.trim(),
+                  'notes': notesController.text.trim(),
+                  if (pickedPoint != null) 'lat': pickedPoint!.latitude,
+                  if (pickedPoint != null) 'lng': pickedPoint!.longitude,
+                });
+              },
+              child: const Text('Salvar local'),
+            ),
+          ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('Cancelar'),
-          ),
-          FilledButton(
-            onPressed: () {
-              if (nameController.text.trim().isEmpty) {
-                _showMessage(
-                  'Informe o nome do ponto de encontro.',
-                  isError: true,
-                );
-                return;
-              }
-              Navigator.pop(dialogContext, {
-                'name': nameController.text.trim(),
-                'address': addressController.text.trim(),
-                'maps_url': mapsController.text.trim(),
-                'notes': notesController.text.trim(),
-              });
-            },
-            child: const Text('Salvar local'),
-          ),
-        ],
       ),
     );
     nameController.dispose();

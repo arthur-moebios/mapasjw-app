@@ -36,3 +36,19 @@ Para publicar, execute o workflow a partir de `master`, informe uma versão
 `X.Y.Z` crescente e notas de atualização. Atualizações preservam o bundle
 identifier; no SideStore, atualize a fonte para localizar a nova versão. A
 publicação do IPA não renova sua assinatura no SideStore.
+
+## Saídas de campo, "Onde foi trabalhado?" e locais
+
+O app segue o modelo unificado do sistema: só existem cartões de rua; os
+polígonos apenas delimitam. Cartões arquivados e o limite da congregação não
+aparecem. Em cada saída, **Onde foi trabalhado?** abre um mapa com as ruas
+coloridas por cartão e a seleção por rua
+(`GET /api/mobile/field-outings/{id}/work-candidates` e
+`POST /api/mobile/field-outings/{id}/work-streets`, com a mesma regra do web:
+todas as ruas de um cartão o concluem, parcial só registra o dia, e editar
+pode reabrir). Saídas online/informativas dispensam o registro (campo
+`informational`). Locais de saída trazem `lat`/`lng`, e o ponto pode ser
+marcado ou ajustado no mapa (`PATCH /api/mobile/field-locations/{id}`); o
+servidor mantém o link do Maps alinhado ao ponto. O `bootstrap` informa o
+circuito e a cidade de cada congregação. As rotas e os campos antigos continuam
+valendo para versões anteriores do app.
