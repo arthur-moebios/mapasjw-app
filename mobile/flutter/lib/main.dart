@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'screens/login_screen.dart';
 import 'screens/map_screen.dart';
+import 'screens/pending_account_screen.dart';
 import 'services/route_tracking_service.dart';
 import 'state/mobile_app_controller.dart';
 
@@ -117,6 +118,9 @@ class _AppGate extends ConsumerWidget {
         ),
       ),
       data: (state) {
+        if (state.isAccountPending) {
+          return PendingAccountScreen(state: state);
+        }
         if (!state.isAuthenticated) return LoginScreen(state: state);
         return const MapScreen();
       },

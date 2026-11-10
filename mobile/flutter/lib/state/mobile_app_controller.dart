@@ -35,6 +35,7 @@ class MobileAppState {
   const MobileAppState({
     this.isAuthenticated = false,
     this.isSigningIn = false,
+    this.isAccountPending = false,
     this.isLoadingTerritories = false,
     this.isLoadingMapPoints = false,
     this.isLoadingLetters = false,
@@ -93,6 +94,9 @@ class MobileAppState {
 
   final bool isAuthenticated;
   final bool isSigningIn;
+
+  /// Conta criada pelo Google sem convite: autenticada, mas sem congregação.
+  final bool isAccountPending;
   final bool isLoadingTerritories;
   final bool isLoadingMapPoints;
   final bool isLoadingLetters;
@@ -165,6 +169,7 @@ class MobileAppState {
   MobileAppState copyWith({
     bool? isAuthenticated,
     bool? isSigningIn,
+    bool? isAccountPending,
     bool? isLoadingTerritories,
     bool? isLoadingMapPoints,
     bool? isLoadingLetters,
@@ -240,6 +245,7 @@ class MobileAppState {
     return MobileAppState(
       isAuthenticated: isAuthenticated ?? this.isAuthenticated,
       isSigningIn: isSigningIn ?? this.isSigningIn,
+      isAccountPending: isAccountPending ?? this.isAccountPending,
       isLoadingTerritories: isLoadingTerritories ?? this.isLoadingTerritories,
       isLoadingMapPoints: isLoadingMapPoints ?? this.isLoadingMapPoints,
       isLoadingLetters: isLoadingLetters ?? this.isLoadingLetters,
@@ -408,6 +414,10 @@ class MobileAppController extends AsyncNotifier<MobileAppState> {
       }
       return loadedState;
     } on Object catch (error) {
+      // Conta em espera: mantém o token para "Verificar novamente".
+      if (MobileApi.isAccountPending(error)) {
+        return const MobileAppState(isAccountPending: true);
+      }
       await _clearCredentials();
       return MobileAppState(errorMessage: MobileApi.messageForError(error));
     }
@@ -502,6 +512,9 @@ class MobileAppController extends AsyncNotifier<MobileAppState> {
       return await _loadBootstrap(token);
     } on Object catch (error) {
       await _storage.delete(key: _verifierKey);
+      if (MobileApi.isAccountPending(error)) {
+        return const MobileAppState(isAccountPending: true);
+      }
       return current.copyWith(
         isSigningIn: false,
         errorMessage: MobileApi.messageForError(error),
@@ -1773,6 +1786,36 @@ class MobileAppController extends AsyncNotifier<MobileAppState> {
       return 'Limpos ${deletedOnServer + deletedLocally} ponto(s) de teste.';
     } on Object catch (error) {
       return MobileApi.messageForError(error);
+    }
+  }
+
+  /// "Verificar novamente" da tela de espera: refaz o bootstrap com o token
+  /// guardado. Se a conta ainda estiver em espera, continua na mesma tela.
+  Future<void> recheckAccount() async {
+    final token = _token ?? await _storage.read(key: _tokenKey);
+    if (token == null || token.isEmpty) {
+      state = const AsyncData(MobileAppState());
+      return;
+    }
+    _token = token;
+    try {
+      state = AsyncData(await _loadBootstrap(token));
+      unawaited(_tracking.requestCurrentStatus());
+    } on Object catch (error) {
+      if (MobileApi.isAccountPending(error)) {
+        state = const AsyncData(
+          MobileAppState(
+            isAccountPending: true,
+            errorMessage: 'Ainda aguardando liberação.',
+          ),
+        );
+        return;
+      }
+      state = AsyncData(
+        (state.asData?.value ?? const MobileAppState()).copyWith(
+          errorMessage: MobileApi.messageForError(error),
+        ),
+      );
     }
   }
 

@@ -717,6 +717,20 @@ class MobileApi {
     },
   );
 
+  /// A API responde 403 com `code: account_pending` quando a conta existe mas
+  /// ainda não foi liberada para nenhuma congregação.
+  static bool isAccountPending(Object error) {
+    if (error is! DioException) return false;
+    final data = error.response?.data;
+    final body = switch (data) {
+      Map map => map,
+      List<int> bytes => _decodeJsonResponse(bytes),
+      _ => null,
+    };
+    return error.response?.statusCode == 403 &&
+        body?['code'] == 'account_pending';
+  }
+
   static String messageForError(Object error) {
     if (error is DioException) {
       final responseData = error.response?.data;
