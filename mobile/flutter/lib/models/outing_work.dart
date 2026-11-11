@@ -6,11 +6,15 @@ class OutingWorkStreet {
     required this.name,
     required this.meters,
     required this.lines,
+    this.worked = false,
   });
 
   final String name;
   final int meters;
   final List<List<LatLng>> lines;
+
+  /// Rua já trabalhada neste ciclo do cartão (registro rápido de cartões em aberto).
+  final bool worked;
 
   /// Chave de comparação: o servidor também ignora caixa e espaços repetidos.
   String get key => streetKey(name);
@@ -19,6 +23,7 @@ class OutingWorkStreet {
       OutingWorkStreet(
         name: json['name'] as String? ?? 'Sem nome',
         meters: (json['meters'] as num?)?.toInt() ?? 0,
+        worked: json['worked'] == true,
         lines: (json['lines'] as List? ?? const [])
             .whereType<List>()
             .map(

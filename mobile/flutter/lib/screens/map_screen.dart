@@ -14,6 +14,7 @@ import 'designations_screen.dart';
 import 'circuit_overview_screen.dart';
 import 'field_outings_screen.dart';
 import 'map_point_sheets.dart';
+import 'follow_up_screen.dart';
 import 'native_sections_screen.dart';
 import 'people_screen.dart';
 import 'territory_details_sheet.dart';
@@ -72,6 +73,15 @@ class _MapScreenState extends ConsumerState<MapScreen> {
           icon: Icon(Icons.route_outlined),
           selectedIcon: Icon(Icons.route_rounded),
           label: 'Cartões',
+        ),
+      );
+    }
+    if (state.canViewStreetCards) {
+      destinations.add(
+        const NavigationDestination(
+          icon: Icon(Icons.fact_check_outlined),
+          selectedIcon: Icon(Icons.fact_check_rounded),
+          label: 'Acompanhar',
         ),
       );
     }
@@ -144,6 +154,12 @@ class _MapScreenState extends ConsumerState<MapScreen> {
       ],
       if (state.canViewLetters) const LettersScreen(),
       if (state.canViewStreetCards) const StreetCardsScreen(),
+      if (state.canViewStreetCards)
+        FollowUpScreen(
+          active:
+              destinations[_tab.clamp(0, destinations.length - 1)].label ==
+              'Acompanhar',
+        ),
       if (state.canViewFieldOutings) const FieldOutingsScreen(),
       _AccountTab(
         state: state,

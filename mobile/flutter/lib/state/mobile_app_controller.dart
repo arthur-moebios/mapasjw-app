@@ -13,6 +13,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../data/mobile_api.dart';
 import '../data/pending_route_store.dart';
+import '../models/follow_up.dart';
 import '../models/mobile_models.dart';
 import '../models/outing_work.dart';
 import '../models/publication_citation.dart';
@@ -1065,6 +1066,69 @@ class MobileAppController extends AsyncNotifier<MobileAppState> {
     );
     await refreshFieldCalendar(month: month, force: true);
     return result;
+  }
+
+  Future<CoverageData> loadCoverage({int? year}) async {
+    final (token, congregationId) = _fieldSession();
+    return _api.coverage(
+      token: token,
+      congregationId: congregationId,
+      year: year,
+    );
+  }
+
+  Future<List<OpenCard>> loadOpenCards() async {
+    final (token, congregationId) = _fieldSession();
+    return _api.openCards(token: token, congregationId: congregationId);
+  }
+
+  Future<OutingWorkData> loadCardWorkCandidates(int cardId) async {
+    final (token, congregationId) = _fieldSession();
+    return _api.cardWorkCandidates(
+      token: token,
+      congregationId: congregationId,
+      cardId: cardId,
+    );
+  }
+
+  /// Registro rápido de trabalho no cartão; a conclusão muda a situação do
+  /// cartão de rua, então a lista de cartões é recarregada.
+  Future<OutingWorkResult> saveCardWork(
+    int cardId,
+    Map<String, Object?> data,
+  ) async {
+    final (token, congregationId) = _fieldSession();
+    final result = await _api.saveCardWork(
+      token: token,
+      congregationId: congregationId,
+      cardId: cardId,
+      data: data,
+    );
+    await refreshStreetCards(force: true);
+    return result;
+  }
+
+  Future<S13Sheet> loadS13({int? year}) async {
+    final (token, congregationId) = _fieldSession();
+    return _api.s13(token: token, congregationId: congregationId, year: year);
+  }
+
+  Future<LeadersAvailabilityData> loadLeadersAvailability() async {
+    final (token, congregationId) = _fieldSession();
+    return _api.leadersAvailability(
+      token: token,
+      congregationId: congregationId,
+    );
+  }
+
+  Future<void> saveLeaderAvailability(int leaderId, List<String> slots) async {
+    final (token, congregationId) = _fieldSession();
+    await _api.saveLeaderAvailability(
+      token: token,
+      congregationId: congregationId,
+      leaderId: leaderId,
+      slots: slots,
+    );
   }
 
   Future<void> deleteFieldOuting(int outingId, {required String month}) async {

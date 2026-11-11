@@ -46,17 +46,56 @@ Future<bool?> showOutingWorkScreen(
   ),
 );
 
+/// Registro rápido de trabalho direto num cartão de rua em aberto (sem saída):
+/// a mesma tela de mapa do "Onde foi trabalhado?", alimentada por outra fonte.
+/// Retorna true quando algo foi salvo.
+Future<bool?> showCardWorkScreen(
+  BuildContext context, {
+  required int cardId,
+  required bool canSave,
+}) => Navigator.of(context).push<bool>(
+  MaterialPageRoute(
+    fullscreenDialog: true,
+    builder: (_) => OutingWorkScreen(
+      outingId: 0,
+      month: '',
+      canSave: canSave,
+      title: 'Registrar trabalho',
+      loader: (ref) => ref
+          .read(mobileAppControllerProvider.notifier)
+          .loadCardWorkCandidates(cardId),
+      saver: (ref, payload) => ref
+          .read(mobileAppControllerProvider.notifier)
+          .saveCardWork(cardId, payload),
+    ),
+  ),
+);
+
 class OutingWorkScreen extends ConsumerStatefulWidget {
   const OutingWorkScreen({
     required this.outingId,
     required this.month,
     required this.canSave,
+    this.title = 'Onde foi trabalhado?',
+    this.loader,
+    this.saver,
     super.key,
   });
 
   final int outingId;
   final String month;
   final bool canSave;
+  final String title;
+
+  /// Fonte alternativa dos candidatos (padrão: a saída `outingId`).
+  final Future<OutingWorkData> Function(WidgetRef ref)? loader;
+
+  /// Gravação alternativa (padrão: o registro da saída `outingId`).
+  final Future<OutingWorkResult> Function(
+    WidgetRef ref,
+    Map<String, Object?> payload,
+  )?
+  saver;
 
   @override
   ConsumerState<OutingWorkScreen> createState() => _OutingWorkScreenState();
@@ -90,9 +129,12 @@ class _OutingWorkScreenState extends ConsumerState<OutingWorkScreen> {
       _error = null;
     });
     try {
-      final data = await ref
-          .read(mobileAppControllerProvider.notifier)
-          .loadOutingWorkCandidates(widget.outingId);
+      final loader = widget.loader;
+      final data = loader != null
+          ? await loader(ref)
+          : await ref
+                .read(mobileAppControllerProvider.notifier)
+                .loadOutingWorkCandidates(widget.outingId);
       if (!mounted) return;
       final today = _dateKey(DateTime.now());
       setState(() {
@@ -180,9 +222,12 @@ class _OutingWorkScreenState extends ConsumerState<OutingWorkScreen> {
     if (confirmed != true || !mounted) return;
     setState(() => _saving = true);
     try {
-      final result = await ref
-          .read(mobileAppControllerProvider.notifier)
-          .saveOutingWork(widget.outingId, payload, month: widget.month);
+      final saver = widget.saver;
+      final result = saver != null
+          ? await saver(ref, payload)
+          : await ref
+                .read(mobileAppControllerProvider.notifier)
+                .saveOutingWork(widget.outingId, payload, month: widget.month);
       if (!mounted) return;
       final parts = <String>[
         if (result.completedCardIds.isNotEmpty)
@@ -218,7 +263,7 @@ class _OutingWorkScreenState extends ConsumerState<OutingWorkScreen> {
     final selection = _selection;
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Onde foi trabalhado?'),
+        title: Text(widget.title),
         actions: [
           if (data != null && !data.noRecordNeeded && widget.canSave)
             TextButton.icon(
@@ -498,7 +543,12 @@ class _OutingWorkScreenState extends ConsumerState<OutingWorkScreen> {
               controlAffinity: ListTileControlAffinity.leading,
               value: selection.isSelected(card, street),
               title: Text(street.name),
-              subtitle: street.meters > 0 ? Text('${street.meters} m') : null,
+              subtitle: street.worked
+                  ? const Text(
+                      'já trabalhada neste ciclo',
+                      style: TextStyle(color: Color(0xFF196B24)),
+                    )
+                  : (street.meters > 0 ? Text('${street.meters} m') : null),
               onChanged: widget.canSave
                   ? (_) => setState(() => selection.toggleStreet(card, street))
                   : null,

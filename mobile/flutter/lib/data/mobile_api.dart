@@ -3,6 +3,7 @@ import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
 
+import '../models/follow_up.dart';
 import '../models/mobile_models.dart';
 import '../models/outing_work.dart';
 import '../models/publication_citation.dart';
@@ -259,6 +260,102 @@ class MobileApi {
       options: _authenticated(token, congregationId),
     );
     return OutingWorkResult.fromJson(response.data ?? const {});
+  }
+
+  /// Cobertura do território no ano de serviço (padrão: o atual).
+  Future<CoverageData> coverage({
+    required String token,
+    required int congregationId,
+    int? year,
+  }) async {
+    final response = await _dio.get<Map<String, dynamic>>(
+      '/mobile/coverage',
+      queryParameters: {'year': ?year},
+      options: _authenticated(token, congregationId),
+    );
+    return CoverageData.fromJson(response.data ?? const {});
+  }
+
+  /// Cartões ainda não concluídos no ano de serviço atual.
+  Future<List<OpenCard>> openCards({
+    required String token,
+    required int congregationId,
+  }) async {
+    final response = await _dio.get<Map<String, dynamic>>(
+      '/mobile/open-cards',
+      options: _authenticated(token, congregationId),
+    );
+    return (response.data?['cards'] as List? ?? const [])
+        .whereType<Map>()
+        .map((item) => OpenCard.fromJson(Map<String, dynamic>.from(item)))
+        .toList(growable: false);
+  }
+
+  /// Um cartão no contrato de "Onde foi trabalhado?" (ruas, linhas e ruas já feitas).
+  Future<OutingWorkData> cardWorkCandidates({
+    required String token,
+    required int congregationId,
+    required int cardId,
+  }) async {
+    final response = await _dio.get<Map<String, dynamic>>(
+      '/mobile/street-cards/$cardId/work-candidates',
+      options: _authenticated(token, congregationId),
+    );
+    return OutingWorkData.fromJson(response.data ?? const {});
+  }
+
+  /// Registro rápido de trabalho no cartão (todas as ruas marcadas o concluem).
+  Future<OutingWorkResult> saveCardWork({
+    required String token,
+    required int congregationId,
+    required int cardId,
+    required Map<String, Object?> data,
+  }) async {
+    final response = await _dio.post<Map<String, dynamic>>(
+      '/mobile/street-cards/$cardId/work-streets',
+      data: data,
+      options: _authenticated(token, congregationId),
+    );
+    return OutingWorkResult.fromJson(response.data ?? const {});
+  }
+
+  /// Folha do S-13-T no ano de serviço (padrão: o atual).
+  Future<S13Sheet> s13({
+    required String token,
+    required int congregationId,
+    int? year,
+  }) async {
+    final response = await _dio.get<Map<String, dynamic>>(
+      '/mobile/s13',
+      queryParameters: {'year': ?year},
+      options: _authenticated(token, congregationId),
+    );
+    return S13Sheet.fromJson(response.data ?? const {});
+  }
+
+  Future<LeadersAvailabilityData> leadersAvailability({
+    required String token,
+    required int congregationId,
+  }) async {
+    final response = await _dio.get<Map<String, dynamic>>(
+      '/mobile/leaders/availability',
+      options: _authenticated(token, congregationId),
+    );
+    return LeadersAvailabilityData.fromJson(response.data ?? const {});
+  }
+
+  /// Substitui os dias/períodos ("6:manha") em que o dirigente pode dirigir.
+  Future<void> saveLeaderAvailability({
+    required String token,
+    required int congregationId,
+    required int leaderId,
+    required List<String> slots,
+  }) async {
+    await _dio.post<Map<String, dynamic>>(
+      '/mobile/leaders/$leaderId/availability',
+      data: {'slots': slots},
+      options: _authenticated(token, congregationId),
+    );
   }
 
   Future<void> deleteFieldOuting({

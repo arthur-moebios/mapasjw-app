@@ -52,3 +52,28 @@ marcado ou ajustado no mapa (`PATCH /api/mobile/field-locations/{id}`); o
 servidor mantém o link do Maps alinhado ao ponto. O `bootstrap` informa o
 circuito e a cidade de cada congregação. As rotas e os campos antigos continuam
 valendo para versões anteriores do app.
+
+## Acompanhar: cobertura, cartões em aberto, S-13-T e dirigentes
+
+A aba **Acompanhar** (visível a quem vê cartões de rua) reúne as visões de
+acompanhamento do território, com os mesmos cálculos da web (serviços
+compartilhados no Laravel) e só carrega quando é aberta pela primeira vez:
+
+- **Cobertura** (`GET /api/mobile/coverage?year=`): estado de cada cartão no
+  **ano de serviço** (1º/set a 31/ago), lido do histórico: concluído (verde) =
+  conclusão no ano e nenhum início depois; em andamento (laranja) = início sem
+  conclusão ou passagens; pendente (vermelho) = nada no ano. Mostra o percentual
+  por km, o quadro por regra (meio de semana, fim de semana, trabalho mais
+  antigo, **iniciados sem finalizar**), as tabelas por grupo/tipo/bairro e um
+  painel com os dados do cartão sem sair da cobertura.
+- **Em aberto** (`GET /api/mobile/open-cards`): cartões não concluídos, com
+  busca, filtros, ruas já trabalhadas e duas ações — **Registrar trabalho**
+  (a mesma tela de mapa do "Onde foi trabalhado?", alimentada por
+  `GET /api/mobile/street-cards/{id}/work-candidates` e gravada em
+  `POST /api/mobile/street-cards/{id}/work-streets`) e **Concluir**, com
+  confirmação. Marcar todas as ruas conclui o cartão; parcial só registra o dia.
+  Exige `cec.cartoes.manage` para gravar.
+- **S-13** (`GET /api/mobile/s13?year=`): a folha do S-13-T por ano de serviço.
+- **Dirigentes** (`GET /api/mobile/leaders/availability` e
+  `POST /api/mobile/leaders/{id}/availability`): disponibilidade por dia e
+  período, uma cor por dia da semana; editar exige `cec.cartoes.manage`.
