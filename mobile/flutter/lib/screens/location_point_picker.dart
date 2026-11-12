@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart' as google_maps;
 import 'package:latlong2/latlong.dart';
 
+import 'maps_config_gate.dart';
+
 /// Tela para marcar o ponto de um local de saída tocando no mapa.
 /// Retorna o ponto escolhido (ou null se a pessoa voltar sem confirmar).
 /// O servidor troca o link do Maps pelo novo ponto, mantendo os dois alinhados.
@@ -50,42 +52,47 @@ class _LocationPointPickerState extends State<LocationPointPicker> {
     final point = _point;
     return Scaffold(
       appBar: AppBar(title: const Text('Marcar o ponto no mapa')),
-      body: Stack(
-        children: [
-          google_maps.GoogleMap(
-            initialCameraPosition: google_maps.CameraPosition(
-              target: google_maps.LatLng(
-                widget.center.latitude,
-                widget.center.longitude,
-              ),
-              zoom: widget.zoom,
-            ),
-            mapToolbarEnabled: false,
-            myLocationButtonEnabled: false,
-            zoomControlsEnabled: false,
-            markers: {
-              if (point != null)
-                google_maps.Marker(
-                  markerId: const google_maps.MarkerId('picked'),
-                  position: google_maps.LatLng(point.latitude, point.longitude),
+      body: MapsConfigGate(
+        builder: (_) => Stack(
+          children: [
+            google_maps.GoogleMap(
+              initialCameraPosition: google_maps.CameraPosition(
+                target: google_maps.LatLng(
+                  widget.center.latitude,
+                  widget.center.longitude,
                 ),
-            },
-            onTap: (position) => setState(
-              () => _point = LatLng(position.latitude, position.longitude),
-            ),
-          ),
-          const Positioned(
-            left: 16,
-            right: 16,
-            top: 12,
-            child: Card(
-              child: Padding(
-                padding: EdgeInsets.all(10),
-                child: Text('Toque no mapa onde fica o ponto de encontro.'),
+                zoom: widget.zoom,
+              ),
+              mapToolbarEnabled: false,
+              myLocationButtonEnabled: false,
+              zoomControlsEnabled: false,
+              markers: {
+                if (point != null)
+                  google_maps.Marker(
+                    markerId: const google_maps.MarkerId('picked'),
+                    position: google_maps.LatLng(
+                      point.latitude,
+                      point.longitude,
+                    ),
+                  ),
+              },
+              onTap: (position) => setState(
+                () => _point = LatLng(position.latitude, position.longitude),
               ),
             ),
-          ),
-        ],
+            const Positioned(
+              left: 16,
+              right: 16,
+              top: 12,
+              child: Card(
+                child: Padding(
+                  padding: EdgeInsets.all(10),
+                  child: Text('Toque no mapa onde fica o ponto de encontro.'),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
       bottomNavigationBar: SafeArea(
         minimum: const EdgeInsets.fromLTRB(16, 8, 16, 12),

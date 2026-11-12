@@ -8,6 +8,7 @@ import 'package:latlong2/latlong.dart';
 import '../data/mobile_api.dart';
 import '../models/outing_work.dart';
 import '../state/mobile_app_controller.dart';
+import 'maps_config_gate.dart';
 
 /// Cores por cartão no mapa e na lista.
 const outingWorkPalette = <Color>[
@@ -330,7 +331,7 @@ class _OutingWorkScreenState extends ConsumerState<OutingWorkScreen> {
       children: [
         SizedBox(
           height: (height * .38).clamp(220, 420).toDouble(),
-          child: _buildMap(data, selection),
+          child: MapsConfigGate(builder: (_) => _buildMap(data, selection)),
         ),
         if (data.notice != null)
           Padding(

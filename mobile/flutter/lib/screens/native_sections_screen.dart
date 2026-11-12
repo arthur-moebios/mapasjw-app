@@ -16,6 +16,7 @@ import '../models/publication_citation.dart';
 import '../services/field_schedule_share_service.dart';
 import 'apartment_status_wizard_sheet.dart';
 import 'map_point_sheets.dart';
+import 'maps_config_gate.dart';
 import 'territory_details_sheet.dart';
 import '../state/mobile_app_controller.dart';
 
@@ -3990,7 +3991,7 @@ class _StreetCardMapViewState extends ConsumerState<_StreetCardMapView> {
       child: Stack(
         fit: StackFit.expand,
         children: [
-          map,
+          MapsConfigGate(builder: (_) => map),
           if (!widget.expanded && widget.onExpand != null)
             Positioned(
               top: 10,
