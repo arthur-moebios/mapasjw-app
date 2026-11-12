@@ -76,15 +76,6 @@ class _MapScreenState extends ConsumerState<MapScreen> {
         ),
       );
     }
-    if (state.canViewStreetCards) {
-      destinations.add(
-        const NavigationDestination(
-          icon: Icon(Icons.fact_check_outlined),
-          selectedIcon: Icon(Icons.fact_check_rounded),
-          label: 'Acompanhar',
-        ),
-      );
-    }
     if (state.canViewFieldOutings) {
       destinations.add(
         const NavigationDestination(
@@ -154,12 +145,6 @@ class _MapScreenState extends ConsumerState<MapScreen> {
       ],
       if (state.canViewLetters) const LettersScreen(),
       if (state.canViewStreetCards) const StreetCardsScreen(),
-      if (state.canViewStreetCards)
-        FollowUpScreen(
-          active:
-              destinations[_tab.clamp(0, destinations.length - 1)].label ==
-              'Acompanhar',
-        ),
       if (state.canViewFieldOutings) const FieldOutingsScreen(),
       _AccountTab(
         state: state,
@@ -1536,10 +1521,12 @@ class _AccountTab extends ConsumerWidget {
         icon: Icons.query_stats_outlined,
       ),
     if (state.canViewTerritories || state.canViewStreetCards)
-      const _NativeShortcut(
+      _NativeShortcut(
         id: 'coverage',
         label: 'Cobertura',
-        description: 'Abrir o mapa de territórios e cartões de rua.',
+        description: state.canViewStreetCards
+            ? 'Acompanhar a cobertura, os cartões em aberto, o S-13 e os dirigentes.'
+            : 'Abrir o mapa de territórios.',
         icon: Icons.donut_large_outlined,
       ),
   ];
@@ -1567,7 +1554,21 @@ class _AccountTab extends ConsumerWidget {
         onNavigate('Início');
         break;
       case 'coverage':
-        onNavigate('Mapa');
+        if (!state.canViewStreetCards) {
+          onNavigate('Mapa');
+          break;
+        }
+        Navigator.of(context).push(
+          MaterialPageRoute<void>(
+            builder: (_) => Scaffold(
+              appBar: AppBar(title: const Text('Cobertura')),
+              body: const SafeArea(
+                top: false,
+                child: FollowUpScreen(active: true),
+              ),
+            ),
+          ),
+        );
         break;
     }
   }

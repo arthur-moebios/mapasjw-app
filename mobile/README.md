@@ -37,6 +37,30 @@ Para publicar, execute o workflow a partir de `master`, informe uma versão
 identifier; no SideStore, atualize a fonte para localizar a nova versão. A
 publicação do IPA não renova sua assinatura no SideStore.
 
+### Passo a passo de toda geração do app
+
+O repositório principal é privado e não compila o app: os workflows ficam em
+`mobile/ci/`, fora de `.github/workflows/`. Os builds rodam no espelho público
+`arthur-moebios/mapasjw-app`. Por isso, toda mudança em `mobile/` segue sempre
+este roteiro completo:
+
+1. **Commit e push** no principal (`origin/master`).
+2. **Espelhamento**: `./.github/scripts/publicar-repo-app.sh [ref]`. Ele copia
+   `mobile/` e `.github/` do commit (não do working tree) para o espelho e
+   recoloca os workflows em `.github/workflows/`.
+3. **Checks**: o push no espelho dispara *Mapas JW Flutter checks* (format,
+   analyze, testes) e os builds de teste Android/iOS. Acompanhe com
+   `gh run list -R arthur-moebios/mapasjw-app` e só siga com tudo verde.
+4. **Release (IPA + SideStore)**: veja a última versão publicada em
+   `source.json` e dispare, no espelho,
+   `gh workflow run mobile-release.yml -R arthur-moebios/mapasjw-app --ref master -f release_version=X.Y.Z -f release_notes="..."`.
+   Acrescente `-f build_complete=true` para publicar também o APK Android.
+5. **Conferência**: `source.json` deve listar a versão nova, e o pacote deve
+   baixar por HTTPS com o tamanho e o SHA-256 informados pelo build.
+
+Rollback: espelhe um `ref` anterior com o script e publique-o com uma versão
+maior (a publicação rejeita versões fora de ordem).
+
 ## Saídas de campo, "Onde foi trabalhado?" e locais
 
 O app segue o modelo unificado do sistema: só existem cartões de rua; os
@@ -55,9 +79,10 @@ valendo para versões anteriores do app.
 
 ## Acompanhar: cobertura, cartões em aberto, S-13-T e dirigentes
 
-A aba **Acompanhar** (visível a quem vê cartões de rua) reúne as visões de
+A tela de acompanhamento, aberta em **Conta → Mais recursos → Cobertura**
+(para quem vê cartões de rua; não é mais uma aba da barra inferior), reúne as visões de
 acompanhamento do território, com os mesmos cálculos da web (serviços
-compartilhados no Laravel) e só carrega quando é aberta pela primeira vez:
+compartilhados no Laravel) e só carrega quando é aberta:
 
 - **Cobertura** (`GET /api/mobile/coverage?year=`): estado de cada cartão no
   **ano de serviço** (1º/set a 31/ago), lido do histórico: concluído (verde) =
