@@ -13,6 +13,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../data/mobile_api.dart';
 import '../data/pending_route_store.dart';
+import '../models/attendance.dart';
 import '../models/follow_up.dart';
 import '../models/mobile_models.dart';
 import '../models/outing_work.dart';
@@ -59,6 +60,7 @@ class MobileAppState {
     this.canUpdateLetterStatus = false,
     this.canManageTerritoryDesignations = false,
     this.canViewPeople = false,
+    this.canViewAttendance = false,
     this.userId,
     this.userName = '',
     this.userEmail = '',
@@ -120,6 +122,7 @@ class MobileAppState {
   final bool canUpdateLetterStatus;
   final bool canManageTerritoryDesignations;
   final bool canViewPeople;
+  final bool canViewAttendance;
   final int? userId;
   final String userName;
   final String userEmail;
@@ -193,6 +196,7 @@ class MobileAppState {
     bool? canUpdateLetterStatus,
     bool? canManageTerritoryDesignations,
     bool? canViewPeople,
+    bool? canViewAttendance,
     int? userId,
     String? userName,
     String? userEmail,
@@ -276,6 +280,7 @@ class MobileAppState {
       canManageTerritoryDesignations:
           canManageTerritoryDesignations ?? this.canManageTerritoryDesignations,
       canViewPeople: canViewPeople ?? this.canViewPeople,
+      canViewAttendance: canViewAttendance ?? this.canViewAttendance,
       userId: userId ?? this.userId,
       userName: userName ?? this.userName,
       userEmail: userEmail ?? this.userEmail,
@@ -558,6 +563,7 @@ class MobileAppController extends AsyncNotifier<MobileAppState> {
       canManageTerritoryDesignations:
           bootstrap['can_manage_territory_designations'] == true,
       canViewPeople: bootstrap['can_view_people'] == true,
+      canViewAttendance: bootstrap['can_view_attendance'] == true,
       isMapsConfigured: !Platform.isIOS,
       selectedCongregationId: selectedId,
       congregations: congregations,
@@ -1005,6 +1011,40 @@ class MobileAppController extends AsyncNotifier<MobileAppState> {
     }
 
     return _api.people(token: token, congregationId: congregationId);
+  }
+
+  Future<AttendanceMonth> loadAttendance({String? month}) async {
+    final current = state.requireValue;
+    final token = _token;
+    final congregationId = current.selectedCongregationId;
+    if (token == null || congregationId == null || !current.canViewAttendance) {
+      throw StateError(
+        'Selecione uma congregação e confirme seu acesso à assistência.',
+      );
+    }
+
+    return _api.attendance(
+      token: token,
+      congregationId: congregationId,
+      month: month,
+    );
+  }
+
+  Future<TimersPage> loadTimers({int page = 1}) async {
+    final current = state.requireValue;
+    final token = _token;
+    final congregationId = current.selectedCongregationId;
+    if (token == null || congregationId == null || !current.canViewAttendance) {
+      throw StateError(
+        'Selecione uma congregação e confirme seu acesso aos cronômetros.',
+      );
+    }
+
+    return _api.timers(
+      token: token,
+      congregationId: congregationId,
+      page: page,
+    );
   }
 
   Future<void> saveFieldOuting(

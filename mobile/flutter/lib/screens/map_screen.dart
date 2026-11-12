@@ -16,7 +16,9 @@ import 'field_outings_screen.dart';
 import 'map_point_sheets.dart';
 import 'follow_up_screen.dart';
 import 'native_sections_screen.dart';
+import 'attendance_screen.dart';
 import 'people_screen.dart';
+import 'timers_screen.dart';
 import 'territory_details_sheet.dart';
 
 const Color _historicalBoundaryColor = Color(0xFF75808A);
@@ -1511,6 +1513,20 @@ class _AccountTab extends ConsumerWidget {
         description: 'Consultar pessoas, perfis e situação de acesso.',
         icon: Icons.groups_outlined,
       ),
+    if (state.canViewAttendance) ...const [
+      _NativeShortcut(
+        id: 'attendance',
+        label: 'Assistência',
+        description: 'Consultar a assistência das reuniões.',
+        icon: Icons.event_available_outlined,
+      ),
+      _NativeShortcut(
+        id: 'timers',
+        label: 'Cronômetros',
+        description: 'Ver o tempo previsto e usado em cada parte.',
+        icon: Icons.timer_outlined,
+      ),
+    ],
     if (state.canViewLetters ||
         state.canViewTerritories ||
         state.canViewStreetCards)
@@ -1549,6 +1565,16 @@ class _AccountTab extends ConsumerWidget {
         Navigator.of(
           context,
         ).push(MaterialPageRoute<void>(builder: (_) => const PeopleScreen()));
+        break;
+      case 'attendance':
+        Navigator.of(context).push(
+          MaterialPageRoute<void>(builder: (_) => const AttendanceScreen()),
+        );
+        break;
+      case 'timers':
+        Navigator.of(
+          context,
+        ).push(MaterialPageRoute<void>(builder: (_) => const TimersScreen()));
         break;
       case 'statistics':
         onNavigate('Início');

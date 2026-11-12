@@ -103,6 +103,25 @@ compartilhados no Laravel) e só carrega quando é aberta:
   `POST /api/mobile/leaders/{id}/availability`): disponibilidade por dia e
   período, uma cor por dia da semana; editar exige `cec.cartoes.manage`.
 
+## Assistência e Cronômetros (consulta)
+
+Duas telas somente de leitura em **Conta → Mais recursos**, visíveis com a
+permissão `assistencia.view` (flag `can_view_attendance` no `bootstrap`):
+
+- **Assistência** (`lib/screens/attendance_screen.dart`): navegação por mês,
+  médias por tipo de reunião e registros (presencial, Zoom, total).
+  `GET /api/mobile/attendance?month=YYYY-MM` devolve `month`, `previous_month`,
+  `next_month` (`null` no mês atual), `averages[]` e `records[]`.
+- **Cronômetros** (`lib/screens/timers_screen.dart`): dias mais recentes
+  primeiro, com Salão Principal e Sala B, partes (previsto, usado, diferença),
+  totais e "x de y partes medidas". `GET /api/mobile/timers?page=N` devolve
+  `available`, `page`, `has_more` e `days[].rooms[].parts[]`; sem as tabelas do
+  cronômetro responde lista vazia com `available: false`.
+
+Os dois endpoints usam `ResolveMobileCartasCongregation:assistencia.view` (a
+congregação vem do header `X-Congregation-ID` validado) e o mesmo cálculo da
+web (`ConsultaDeAssistencia` e `ConsultaDeCronometro`). Não há edição no app.
+
 ## Cartas de condomínio: blocos, andares e QR
 
 - A tela do condomínio (`CondominiumLettersScreen`) agrupa os apartamentos por

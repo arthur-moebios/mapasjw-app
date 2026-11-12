@@ -3,6 +3,7 @@ import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
 
+import '../models/attendance.dart';
 import '../models/follow_up.dart';
 import '../models/mobile_models.dart';
 import '../models/outing_work.dart';
@@ -217,6 +218,32 @@ class MobileApi {
         .whereType<Map>()
         .map((item) => MobilePerson.fromJson(Map<String, dynamic>.from(item)))
         .toList(growable: false);
+  }
+
+  Future<AttendanceMonth> attendance({
+    required String token,
+    required int congregationId,
+    String? month,
+  }) async {
+    final response = await _dio.get<Map<String, dynamic>>(
+      '/mobile/attendance',
+      queryParameters: {'month': ?month},
+      options: _authenticated(token, congregationId),
+    );
+    return AttendanceMonth.fromJson(response.data ?? const {});
+  }
+
+  Future<TimersPage> timers({
+    required String token,
+    required int congregationId,
+    int page = 1,
+  }) async {
+    final response = await _dio.get<Map<String, dynamic>>(
+      '/mobile/timers',
+      queryParameters: {'page': page},
+      options: _authenticated(token, congregationId),
+    );
+    return TimersPage.fromJson(response.data ?? const {});
   }
 
   Future<void> saveFieldOuting({
