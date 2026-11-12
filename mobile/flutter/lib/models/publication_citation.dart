@@ -260,6 +260,45 @@ class PublicationCatalog {
       );
 }
 
+/// Uma folha de QR possível: publicação (ou tópico) com link para o QR.
+class QrOption {
+  const QrOption({
+    required this.title,
+    required this.link,
+    required this.label,
+    this.code = '',
+    this.subject = '',
+  });
+
+  final String title;
+  final String code;
+  final String link;
+  final String subject;
+
+  /// Texto para o seletor: título, mais o assunto interno quando houver.
+  final String label;
+
+  /// Corpo de `POST /mobile/publications/qr`.
+  Map<String, Object?> toJson() => {
+    'titulo': title,
+    'codigo': code,
+    'assunto': subject,
+    'link': link,
+  };
+
+  @override
+  bool operator ==(Object other) =>
+      other is QrOption &&
+      other.title == title &&
+      other.code == code &&
+      other.link == link &&
+      other.subject == subject &&
+      other.label == label;
+
+  @override
+  int get hashCode => Object.hash(title, code, link, subject, label);
+}
+
 /// Regras puras (testáveis sem widgets).
 abstract final class CitationRules {
   /// Acrescenta [citation] respeitando limite e duplicidade (repetida ou
@@ -357,5 +396,86 @@ abstract final class CitationRules {
       if (pubs.isNotEmpty) '$label: $pubs',
       if (topic.isNotEmpty) 'Assunto: $topic',
     ].join(' · ');
+  }
+
+  /// Publicação do catálogo a partir do texto antigo: rótulo completo, só o
+  /// título ou o código no começo.
+  static PublicationEntry? findPublication(
+    PublicationCatalog catalog,
+    String? text,
+  ) {
+    final value = normalizeSearch(text).trim();
+    if (value.isEmpty) return null;
+    for (final entry in catalog.publications) {
+      if (normalizeSearch(entry.label) == value ||
+          normalizeSearch(entry.title) == value ||
+          (entry.code.isNotEmpty &&
+              value.startsWith('${normalizeSearch(entry.code)} '))) {
+        return entry;
+      }
+    }
+    return null;
+  }
+
+  /// Link do QR de uma publicação: o do tópico quando o assunto bate com um
+  /// tópico que tem link; senão o da publicação.
+  static String? linkForQr(PublicationEntry? entry, String? subject) {
+    if (entry == null) return null;
+    final wanted = normalizeSearch(subject).trim();
+    if (wanted.isNotEmpty) {
+      for (final topic in entry.topics) {
+        if (normalizeSearch(topic.title) == wanted && topic.link != null) {
+          return topic.link;
+        }
+      }
+    }
+    return entry.link;
+  }
+
+  /// Opções de QR (mesma regra da web): cada citação com link (o do assunto
+  /// interno, senão o da publicação); sem citações, o caminho legado pelo
+  /// texto da publicação, procurado no [catalog].
+  static List<QrOption> qrOptions({
+    required List<PublicationCitation> citations,
+    String? legacy,
+    String? freeSubject,
+    PublicationCatalog catalog = const PublicationCatalog(),
+  }) {
+    final free = (freeSubject ?? '').trim();
+    String join(String topic) {
+      final seen = <String>{};
+      final parts = [topic.trim(), free].where((part) {
+        final key = normalizeSearch(part);
+        return part.isNotEmpty && seen.add(key);
+      });
+      return _cut(parts.join(' — '), 255);
+    }
+
+    if (citations.isNotEmpty) {
+      return [
+        for (final c in citations)
+          if (httpsOnly(c.topicLink) ?? httpsOnly(c.link) case final link?)
+            QrOption(
+              title: c.title,
+              code: c.code,
+              link: link,
+              subject: join(c.topic),
+              label: c.topic.isEmpty ? c.title : '${c.title} — ${c.topic}',
+            ),
+      ];
+    }
+
+    final entry = findPublication(catalog, legacy);
+    final link = linkForQr(entry, free);
+    if (entry == null || link == null) return const [];
+    return [
+      QrOption(
+        title: entry.title,
+        code: entry.code,
+        link: link,
+        subject: free,
+        label: entry.label,
+      ),
+    ];
   }
 }

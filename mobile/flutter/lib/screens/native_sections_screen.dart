@@ -10,7 +10,10 @@ import 'package:google_maps_flutter/google_maps_flutter.dart' as google_maps;
 import 'package:latlong2/latlong.dart';
 
 import '../data/mobile_api.dart';
+import '../models/letter_layout.dart';
 import '../models/mobile_models.dart';
+import '../models/publication_citation.dart';
+import '../services/field_schedule_share_service.dart';
 import 'apartment_status_wizard_sheet.dart';
 import 'map_point_sheets.dart';
 import 'territory_details_sheet.dart';
@@ -1489,6 +1492,9 @@ class _CondominiumLettersScreenState
   int? _campaignId;
   int? _savingApartmentId;
 
+  /// Blocos recolhidos (chave de [LetterBlockGroup]); sobrevive ao recarregar.
+  final Set<String> _collapsedGroups = {};
+
   @override
   void initState() {
     super.initState();
@@ -1507,6 +1513,33 @@ class _CondominiumLettersScreenState
   }
 
   Future<void> _refresh() async => _load(campaignId: _campaignId);
+
+  void _toggleGroup(String key) => setState(() {
+    if (!_collapsedGroups.remove(key)) _collapsedGroups.add(key);
+  });
+
+  void _toggleAllGroups(List<LetterBlockGroup> groups) => setState(() {
+    final allCollapsed = groups.every((g) => _collapsedGroups.contains(g.key));
+    if (allCollapsed) {
+      _collapsedGroups.removeAll(groups.map((g) => g.key));
+    } else {
+      _collapsedGroups.addAll(groups.map((g) => g.key));
+    }
+  });
+
+  Future<Uint8List> _generateQr(QrOption option) =>
+      ref.read(mobileAppControllerProvider.notifier).publicationQrPdf(option);
+
+  Future<void> _shareQr(
+    Uint8List bytes,
+    QrOption option,
+  ) => FieldScheduleShareService.shareFile(
+    bytes: bytes,
+    fileName:
+        'qr-${normalizeSearch(option.code.isEmpty ? option.title : option.code).replaceAll(RegExp(r'[^a-z0-9]+'), '-')}.pdf',
+    mimeType: 'application/pdf',
+    title: 'QR · ${option.label}',
+  );
 
   Future<void> _chooseStatus(
     CondominiumDetail detail,
@@ -1527,6 +1560,8 @@ class _CondominiumLettersScreenState
           apartment: apartment,
           today: DateTime.now,
           loadCatalog: () => controller.loadPublicationCatalog(detail),
+          generateQr: _generateQr,
+          shareQr: _shareQr,
           loadHistory: () => controller.loadApartmentHistory(
             condominiumId: detail.id,
             campaignId: detail.campaign!.id,
@@ -1581,13 +1616,11 @@ class _CondominiumLettersScreenState
         final detail = snapshot.data!;
         final canSelectCampaign =
             detail.canChooseCampaign && detail.campaigns.isNotEmpty;
-        final apartmentsByLocation = <String, List<ApartmentLetter>>{};
-        for (final apartment in detail.apartments) {
-          final location = apartment.locationLabel.isEmpty
-              ? 'Endereços'
-              : apartment.locationLabel;
-          apartmentsByLocation.putIfAbsent(location, () => []).add(apartment);
-        }
+        final groups = LetterLayout.group(detail.apartments);
+        final canTap = detail.canUpdateStatus;
+        final allCollapsed =
+            groups.isNotEmpty &&
+            groups.every((group) => _collapsedGroups.contains(group.key));
         return RefreshIndicator(
           onRefresh: _refresh,
           child: ListView(
@@ -1677,40 +1710,33 @@ class _CondominiumLettersScreenState
                   message:
                       'Confira a campanha selecionada ou suas designações.',
                 ),
-              ...apartmentsByLocation.entries.map(
-                (group) => Card(
-                  margin: const EdgeInsets.only(bottom: 12),
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(13, 12, 13, 14),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          group.key,
-                          style: Theme.of(context).textTheme.titleSmall
-                              ?.copyWith(fontWeight: FontWeight.w700),
-                        ),
-                        const SizedBox(height: 10),
-                        Wrap(
-                          spacing: 7,
-                          runSpacing: 8,
-                          children: group.value
-                              .map(
-                                (apartment) => _ApartmentStatusTile(
-                                  apartment: apartment,
-                                  isSaving: _savingApartmentId == apartment.id,
-                                  onTap:
-                                      apartment.canUpdate &&
-                                          detail.canUpdateStatus
-                                      ? () => _chooseStatus(detail, apartment)
-                                      : null,
-                                ),
-                              )
-                              .toList(growable: false),
-                        ),
-                      ],
+              if (groups.length > 1)
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: TextButton.icon(
+                    onPressed: () => _toggleAllGroups(groups),
+                    icon: Icon(
+                      allCollapsed
+                          ? Icons.unfold_more_rounded
+                          : Icons.unfold_less_rounded,
+                    ),
+                    label: Text(
+                      allCollapsed
+                          ? 'Expandir todos os blocos'
+                          : 'Recolher todos os blocos',
                     ),
                   ),
+                ),
+              ...groups.map(
+                (group) => _LetterBlockCard(
+                  group: group,
+                  statuses: detail.statuses,
+                  expanded: !_collapsedGroups.contains(group.key),
+                  savingApartmentId: _savingApartmentId,
+                  canTap: canTap,
+                  onToggle: () => _toggleGroup(group.key),
+                  onTapApartment: (apartment) =>
+                      _chooseStatus(detail, apartment),
                 ),
               ),
             ],
@@ -4188,6 +4214,156 @@ class _LetterStatusBadge extends StatelessWidget {
   );
 }
 
+class _LetterBlockCard extends StatelessWidget {
+  const _LetterBlockCard({
+    required this.group,
+    required this.statuses,
+    required this.expanded,
+    required this.savingApartmentId,
+    required this.canTap,
+    required this.onToggle,
+    required this.onTapApartment,
+  });
+
+  final LetterBlockGroup group;
+  final List<LetterStatusOption> statuses;
+  final bool expanded;
+  final int? savingApartmentId;
+  final bool canTap;
+  final VoidCallback onToggle;
+  final void Function(ApartmentLetter apartment) onTapApartment;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final counts = group.statusCounts(statuses);
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Semantics(
+            button: true,
+            expanded: expanded,
+            label:
+                '${group.title}, ${group.summary}. ${expanded ? 'Toque para recolher' : 'Toque para expandir'}',
+            excludeSemantics: true,
+            child: InkWell(
+              onTap: onToggle,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(13, 11, 8, 11),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            group.title,
+                            style: theme.textTheme.titleSmall?.copyWith(
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(group.summary, style: theme.textTheme.bodySmall),
+                          const SizedBox(height: 6),
+                          Wrap(
+                            spacing: 10,
+                            runSpacing: 4,
+                            children: [
+                              for (final count in counts)
+                                Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Container(
+                                      width: 9,
+                                      height: 9,
+                                      decoration: BoxDecoration(
+                                        color: count.color,
+                                        shape: BoxShape.circle,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      '${count.count}',
+                                      style: theme.textTheme.labelSmall
+                                          ?.copyWith(
+                                            fontWeight: FontWeight.w700,
+                                          ),
+                                    ),
+                                  ],
+                                ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                    AnimatedRotation(
+                      turns: expanded ? 0.5 : 0,
+                      duration: const Duration(milliseconds: 180),
+                      child: const Icon(Icons.expand_more_rounded),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          if (expanded)
+            for (var i = 0; i < group.floors.length; i++) ...[
+              Divider(
+                height: 1,
+                thickness: 1,
+                color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (group.isBlock)
+                      SizedBox(
+                        width: 40,
+                        height: 62,
+                        child: Center(
+                          child: Text(
+                            group.floors[i].label,
+                            textAlign: TextAlign.center,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: theme.textTheme.labelMedium?.copyWith(
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ),
+                      ),
+                    if (group.isBlock) const SizedBox(width: 6),
+                    Expanded(
+                      child: Wrap(
+                        spacing: 6,
+                        runSpacing: 6,
+                        children: [
+                          for (final apartment in group.floors[i].apartments)
+                            _ApartmentStatusTile(
+                              apartment: apartment,
+                              isSaving: savingApartmentId == apartment.id,
+                              onTap: apartment.canUpdate && canTap
+                                  ? () => onTapApartment(apartment)
+                                  : null,
+                            ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+        ],
+      ),
+    );
+  }
+}
+
 class _ApartmentStatusTile extends StatelessWidget {
   const _ApartmentStatusTile({
     required this.apartment,
@@ -4215,13 +4391,13 @@ class _ApartmentStatusTile extends StatelessWidget {
         child: InkWell(
           onTap: onTap,
           child: SizedBox(
-            width: 82,
-            height: 76,
+            width: 64,
+            height: 62,
             child: Stack(
               children: [
                 Center(
                   child: Padding(
-                    padding: const EdgeInsets.fromLTRB(4, 6, 4, 5),
+                    padding: const EdgeInsets.fromLTRB(3, 5, 3, 4),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
@@ -4235,9 +4411,10 @@ class _ApartmentStatusTile extends StatelessWidget {
                               ?.copyWith(
                                 color: color,
                                 fontWeight: FontWeight.w800,
+                                fontSize: 13,
                               ),
                         ),
-                        const SizedBox(height: 2),
+                        const SizedBox(height: 1),
                         Text(
                           apartment.statusLabel,
                           maxLines: 1,
@@ -4245,7 +4422,7 @@ class _ApartmentStatusTile extends StatelessWidget {
                           style: Theme.of(context).textTheme.labelSmall
                               ?.copyWith(
                                 color: color,
-                                fontSize: 9,
+                                fontSize: 8.5,
                                 fontWeight: FontWeight.w700,
                               ),
                         ),
@@ -4255,7 +4432,7 @@ class _ApartmentStatusTile extends StatelessWidget {
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: Theme.of(context).textTheme.labelSmall
-                                ?.copyWith(fontSize: 8),
+                                ?.copyWith(fontSize: 7.5),
                           ),
                       ],
                     ),

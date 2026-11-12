@@ -865,6 +865,21 @@ class MobileAppController extends AsyncNotifier<MobileAppState> {
     );
   }
 
+  Future<Uint8List> publicationQrPdf(QrOption option) async {
+    final current = state.requireValue;
+    final token = _token;
+    final congregationId = current.selectedCongregationId;
+    if (token == null || congregationId == null) {
+      throw StateError('Entre e selecione uma congregação para gerar o QR.');
+    }
+
+    return _api.publicationQrPdf(
+      token: token,
+      congregationId: congregationId,
+      body: option.toJson(),
+    );
+  }
+
   Future<Uint8List> exportFieldSchedule({
     required String from,
     required String through,

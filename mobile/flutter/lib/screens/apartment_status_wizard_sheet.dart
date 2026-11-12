@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
+import '../data/mobile_api.dart';
 import '../models/apartment_status_wizard.dart';
 import '../models/mobile_models.dart';
 import '../models/publication_citation.dart';
@@ -14,6 +16,8 @@ class ApartmentStatusWizardSheet extends StatefulWidget {
     super.key,
     this.today,
     this.loadCatalog,
+    this.generateQr,
+    this.shareQr,
   });
 
   final CondominiumDetail detail;
@@ -25,6 +29,12 @@ class ApartmentStatusWizardSheet extends StatefulWidget {
   /// Catálogo v2 de publicações; sem ele (ou se falhar), usa o catálogo
   /// antigo vindo no detalhe do condomínio.
   final Future<PublicationCatalog> Function()? loadCatalog;
+
+  /// Gera o PDF de QR no servidor; sem ele o botão "Gerar QR" não aparece.
+  final Future<Uint8List> Function(QrOption option)? generateQr;
+
+  /// Abre o compartilhamento nativo com o PDF gerado.
+  final Future<void> Function(Uint8List bytes, QrOption option)? shareQr;
 
   @override
   State<ApartmentStatusWizardSheet> createState() =>
@@ -264,6 +274,11 @@ class _ApartmentStatusWizardSheetState
             ),
             onChanged: (value) => setState(() => _subject = value),
           ),
+          _qrButton(
+            citations: _citations,
+            legacy: _publication,
+            subject: _subject,
+          ),
           const SizedBox(height: 12),
           _personSelector(
             label: 'Quem escreveu',
@@ -355,7 +370,38 @@ class _ApartmentStatusWizardSheetState
           text: 'Assunto: $subject',
         ),
       ],
+      _qrButton(
+        citations: _apartment.citations,
+        legacy: legacy,
+        subject: subject,
+      ),
     ];
+  }
+
+  /// Botão "Gerar QR": some quando nenhuma publicação tem link.
+  Widget _qrButton({
+    required List<PublicationCitation> citations,
+    required String legacy,
+    required String subject,
+  }) {
+    final generate = widget.generateQr;
+    final share = widget.shareQr;
+    if (generate == null || share == null) return const SizedBox.shrink();
+    final options = CitationRules.qrOptions(
+      citations: citations,
+      legacy: legacy,
+      freeSubject: subject,
+      catalog: _catalogData,
+    );
+    if (options.isEmpty) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(top: 10),
+      child: _GenerateQrButton(
+        options: options,
+        generate: generate,
+        share: share,
+      ),
+    );
   }
 
   Widget get _addressCard {
@@ -569,6 +615,103 @@ class _ApartmentStatusWizardSheetState
       },
     );
   }
+}
+
+class _GenerateQrButton extends StatefulWidget {
+  const _GenerateQrButton({
+    required this.options,
+    required this.generate,
+    required this.share,
+  });
+
+  final List<QrOption> options;
+  final Future<Uint8List> Function(QrOption option) generate;
+  final Future<void> Function(Uint8List bytes, QrOption option) share;
+
+  @override
+  State<_GenerateQrButton> createState() => _GenerateQrButtonState();
+}
+
+class _GenerateQrButtonState extends State<_GenerateQrButton> {
+  bool _busy = false;
+
+  Future<QrOption?> _choose() async {
+    if (widget.options.length == 1) return widget.options.first;
+    return showModalBottomSheet<QrOption>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) => SafeArea(
+        child: ListView(
+          shrinkWrap: true,
+          children: [
+            const ListTile(
+              title: Text(
+                'Qual publicação no QR?',
+                style: TextStyle(fontWeight: FontWeight.w700),
+              ),
+            ),
+            for (final option in widget.options)
+              ListTile(
+                leading: const Icon(Icons.qr_code_2_rounded),
+                title: Text(option.label),
+                subtitle: option.subject.isEmpty ? null : Text(option.subject),
+                onTap: () => Navigator.pop(context, option),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _run() async {
+    final option = await _choose();
+    if (option == null || !mounted) return;
+    setState(() => _busy = true);
+    try {
+      final bytes = await widget.generate(option);
+      if (!mounted) return;
+      await widget.share(bytes, option);
+    } on PlatformException catch (error) {
+      _fail(
+        error.message == null
+            ? 'O iPhone não conseguiu abrir o compartilhamento do arquivo.'
+            : 'O iPhone não conseguiu compartilhar: ${error.message}',
+      );
+    } on MissingPluginException {
+      _fail(
+        'O compartilhamento não está disponível nesta instalação. Atualize o aplicativo.',
+      );
+    } on Object catch (error) {
+      _fail(
+        error is StateError
+            ? error.message.toString()
+            : MobileApi.messageForError(error),
+      );
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  void _fail(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  @override
+  Widget build(BuildContext context) => Align(
+    alignment: Alignment.centerLeft,
+    child: OutlinedButton.icon(
+      onPressed: _busy ? null : _run,
+      icon: _busy
+          ? const SizedBox.square(
+              dimension: 18,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
+          : const Icon(Icons.qr_code_2_rounded),
+      label: Text(_busy ? 'Gerando QR…' : 'Gerar QR'),
+    ),
+  );
 }
 
 class _StepBadge extends StatelessWidget {

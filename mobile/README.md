@@ -102,3 +102,30 @@ compartilhados no Laravel) e só carrega quando é aberta:
 - **Dirigentes** (`GET /api/mobile/leaders/availability` e
   `POST /api/mobile/leaders/{id}/availability`): disponibilidade por dia e
   período, uma cor por dia da semana; editar exige `cec.cartoes.manage`.
+
+## Cartas de condomínio: blocos, andares e QR
+
+- A tela do condomínio (`CondominiumLettersScreen`) agrupa os apartamentos por
+  bloco (ordem do número do bloco). Cada bloco é um card recolhível (toque no
+  cabeçalho) com "N aptos · M andares" e a contagem por status em bolinhas
+  coloridas. Dentro do bloco, cada andar é uma linha, do mais alto ao térreo
+  ("5º", "Térreo" ou o nome do pavimento), com os apartamentos ao lado. Unidades
+  avulsas ou sem bloco ficam em grupo próprio. O estado de recolhido fica na
+  tela e é mantido ao recarregar; "Recolher/Expandir todos os blocos" aparece
+  quando há mais de um grupo. A montagem do agrupamento está em
+  `lib/models/letter_layout.dart`.
+- "Gerar QR" no assistente de status (ao escrever a carta e ao reler um registro
+  salvo) aparece quando alguma publicação citada tem link (o do assunto interno,
+  senão o da publicação; no texto antigo, o link do tópico se o assunto bater).
+  Com mais de uma opção, o publicador escolhe qual. O app chama
+  `POST /api/mobile/publications/qr` e abre o compartilhamento nativo com o PDF.
+  As regras de opções estão em `CitationRules.qrOptions`
+  (`lib/models/publication_citation.dart`).
+- `POST /api/mobile/publications/qr` (token com `cartas:read`, `X-Congregation-ID`
+  e permissão `condominiums.view`) recebe `titulo` (obrigatório), `codigo`,
+  `assunto` e `link` (obrigatório, https de `jw.org` ou subdomínio; outro host dá
+  422). O servidor gera o QR (`QrCodeCartao`), reaproveita a view
+  `cartas.publicacoes.qr-pdf` da web e devolve `application/pdf`
+  (folha A4 com 12 cópias). A rota web `cartas.publicacoes.qr` não mudou.
+  Teste: `tests/Feature/PublicationQrPdfMobileTest.php`.
+

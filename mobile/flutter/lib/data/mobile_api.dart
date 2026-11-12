@@ -97,6 +97,39 @@ class MobileApi {
         .toList(growable: false);
   }
 
+  /// Folha A4 de QR (PDF) gerada pelo servidor.
+  Future<Uint8List> publicationQrPdf({
+    required String token,
+    required int congregationId,
+    required Map<String, Object?> body,
+  }) async {
+    final response = await _dio.post<List<int>>(
+      '/mobile/publications/qr',
+      data: body,
+      options: _authenticated(
+        token,
+        congregationId,
+      ).copyWith(responseType: ResponseType.bytes),
+    );
+    final bytes = response.data;
+    if (bytes == null || bytes.isEmpty) {
+      throw StateError('O servidor retornou um arquivo vazio.');
+    }
+    const signature = [0x25, 0x50, 0x44, 0x46, 0x2D];
+    final isPdf =
+        bytes.length >= signature.length &&
+        List<int>.generate(
+          signature.length,
+          (index) => index,
+        ).every((index) => bytes[index] == signature[index]);
+    if (!isPdf) {
+      throw StateError(
+        'O servidor não retornou um PDF válido. Confira a conexão e tente novamente.',
+      );
+    }
+    return Uint8List.fromList(bytes);
+  }
+
   Future<Uint8List> exportFieldSchedule({
     required String token,
     required int congregationId,
