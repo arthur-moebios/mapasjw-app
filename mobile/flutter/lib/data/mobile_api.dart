@@ -4,9 +4,12 @@ import 'dart:typed_data';
 import 'package:dio/dio.dart';
 
 import '../models/attendance.dart';
+import '../models/cart.dart';
+import '../models/field_locations.dart';
 import '../models/follow_up.dart';
 import '../models/mobile_models.dart';
 import '../models/outing_work.dart';
+import '../models/programacoes.dart';
 import '../models/publication_citation.dart';
 
 class MobileApi {
@@ -244,6 +247,56 @@ class MobileApi {
       options: _authenticated(token, congregationId),
     );
     return TimersPage.fromJson(response.data ?? const {});
+  }
+
+  Future<ProgramacoesMonth> programacoes({
+    required String token,
+    required int congregationId,
+    required String type,
+    String? month,
+  }) async {
+    final response = await _dio.get<Map<String, dynamic>>(
+      '/mobile/programacoes',
+      queryParameters: {'tipo': type, 'mes': ?month},
+      options: _authenticated(token, congregationId),
+    );
+    return ProgramacoesMonth.fromJson(response.data ?? const {});
+  }
+
+  Future<CartCalendar> cartCalendar({
+    required String token,
+    required int congregationId,
+    String? month,
+    int? spotId,
+  }) async {
+    final response = await _dio.get<Map<String, dynamic>>(
+      '/mobile/cart/calendar',
+      queryParameters: {'month': ?month, 'spot': ?spotId},
+      options: _authenticated(token, congregationId),
+    );
+    return CartCalendar.fromJson(response.data ?? const {});
+  }
+
+  Future<CartMySignups> cartMySignups({
+    required String token,
+    required int congregationId,
+  }) async {
+    final response = await _dio.get<Map<String, dynamic>>(
+      '/mobile/cart/my-signups',
+      options: _authenticated(token, congregationId),
+    );
+    return CartMySignups.fromJson(response.data ?? const {});
+  }
+
+  Future<FieldLocationsPage> fieldLocations({
+    required String token,
+    required int congregationId,
+  }) async {
+    final response = await _dio.get<Map<String, dynamic>>(
+      '/mobile/field-locations',
+      options: _authenticated(token, congregationId),
+    );
+    return FieldLocationsPage.fromJson(response.data ?? const {});
   }
 
   Future<void> saveFieldOuting({

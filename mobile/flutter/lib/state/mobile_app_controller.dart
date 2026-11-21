@@ -14,9 +14,12 @@ import 'package:url_launcher/url_launcher.dart';
 import '../data/mobile_api.dart';
 import '../data/pending_route_store.dart';
 import '../models/attendance.dart';
+import '../models/cart.dart';
+import '../models/field_locations.dart';
 import '../models/follow_up.dart';
 import '../models/mobile_models.dart';
 import '../models/outing_work.dart';
+import '../models/programacoes.dart';
 import '../models/publication_citation.dart';
 import '../services/route_tracking_service.dart';
 
@@ -61,6 +64,8 @@ class MobileAppState {
     this.canManageTerritoryDesignations = false,
     this.canViewPeople = false,
     this.canViewAttendance = false,
+    this.canViewProgramacoes = false,
+    this.canViewCart = false,
     this.userId,
     this.userName = '',
     this.userEmail = '',
@@ -123,6 +128,11 @@ class MobileAppState {
   final bool canManageTerritoryDesignations;
   final bool canViewPeople;
   final bool canViewAttendance;
+
+  /// `prog.view` / `tpl.view`: o bootstrap precisa expor `can_view_programacoes`
+  /// e `can_view_cart`; sem isso as entradas ficam ocultas.
+  final bool canViewProgramacoes;
+  final bool canViewCart;
   final int? userId;
   final String userName;
   final String userEmail;
@@ -197,6 +207,8 @@ class MobileAppState {
     bool? canManageTerritoryDesignations,
     bool? canViewPeople,
     bool? canViewAttendance,
+    bool? canViewProgramacoes,
+    bool? canViewCart,
     int? userId,
     String? userName,
     String? userEmail,
@@ -281,6 +293,8 @@ class MobileAppState {
           canManageTerritoryDesignations ?? this.canManageTerritoryDesignations,
       canViewPeople: canViewPeople ?? this.canViewPeople,
       canViewAttendance: canViewAttendance ?? this.canViewAttendance,
+      canViewProgramacoes: canViewProgramacoes ?? this.canViewProgramacoes,
+      canViewCart: canViewCart ?? this.canViewCart,
       userId: userId ?? this.userId,
       userName: userName ?? this.userName,
       userEmail: userEmail ?? this.userEmail,
@@ -564,6 +578,8 @@ class MobileAppController extends AsyncNotifier<MobileAppState> {
           bootstrap['can_manage_territory_designations'] == true,
       canViewPeople: bootstrap['can_view_people'] == true,
       canViewAttendance: bootstrap['can_view_attendance'] == true,
+      canViewProgramacoes: bootstrap['can_view_programacoes'] == true,
+      canViewCart: bootstrap['can_view_cart'] == true,
       isMapsConfigured: !Platform.isIOS,
       selectedCongregationId: selectedId,
       congregations: congregations,
@@ -1028,6 +1044,71 @@ class MobileAppController extends AsyncNotifier<MobileAppState> {
       congregationId: congregationId,
       month: month,
     );
+  }
+
+  Future<ProgramacoesMonth> loadProgramacoes({
+    required String type,
+    String? month,
+  }) async {
+    final current = state.requireValue;
+    final token = _token;
+    final congregationId = current.selectedCongregationId;
+    if (token == null ||
+        congregationId == null ||
+        !current.canViewProgramacoes) {
+      throw StateError(
+        'Selecione uma congregação e confirme seu acesso às programações.',
+      );
+    }
+    return _api.programacoes(
+      token: token,
+      congregationId: congregationId,
+      type: type,
+      month: month,
+    );
+  }
+
+  Future<CartCalendar> loadCartCalendar({String? month, int? spotId}) async {
+    final current = state.requireValue;
+    final token = _token;
+    final congregationId = current.selectedCongregationId;
+    if (token == null || congregationId == null || !current.canViewCart) {
+      throw StateError(
+        'Selecione uma congregação e confirme seu acesso ao carrinho.',
+      );
+    }
+    return _api.cartCalendar(
+      token: token,
+      congregationId: congregationId,
+      month: month,
+      spotId: spotId,
+    );
+  }
+
+  Future<CartMySignups> loadCartMySignups() async {
+    final current = state.requireValue;
+    final token = _token;
+    final congregationId = current.selectedCongregationId;
+    if (token == null || congregationId == null || !current.canViewCart) {
+      throw StateError(
+        'Selecione uma congregação e confirme seu acesso ao carrinho.',
+      );
+    }
+    return _api.cartMySignups(token: token, congregationId: congregationId);
+  }
+
+  Future<FieldLocationsPage> loadFieldLocations() async {
+    final current = state.requireValue;
+    final token = _token;
+    final congregationId = current.selectedCongregationId;
+    if (token == null ||
+        congregationId == null ||
+        !current.canViewFieldOutings) {
+      throw StateError(
+        'Selecione uma congregação e confirme seu acesso aos locais.',
+      );
+    }
+    return _api.fieldLocations(token: token, congregationId: congregationId);
   }
 
   Future<TimersPage> loadTimers({int page = 1}) async {

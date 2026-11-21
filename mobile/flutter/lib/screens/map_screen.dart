@@ -17,6 +17,9 @@ import 'map_point_sheets.dart';
 import 'follow_up_screen.dart';
 import 'native_sections_screen.dart';
 import 'attendance_screen.dart';
+import 'cart_screen.dart';
+import 'field_locations_screen.dart';
+import 'programacoes_screen.dart';
 import 'people_screen.dart';
 import 'timers_screen.dart';
 import 'territory_details_sheet.dart';
@@ -1527,6 +1530,27 @@ class _AccountTab extends ConsumerWidget {
         icon: Icons.timer_outlined,
       ),
     ],
+    if (state.canViewProgramacoes)
+      const _NativeShortcut(
+        id: 'programacoes',
+        label: 'Programações',
+        description: 'Ver as designações das reuniões, AVA e limpeza.',
+        icon: Icons.event_note_outlined,
+      ),
+    if (state.canViewCart)
+      const _NativeShortcut(
+        id: 'cart',
+        label: 'Carrinho',
+        description: 'Ver os turnos do carrinho e minhas inscrições.',
+        icon: Icons.shopping_cart_outlined,
+      ),
+    if (state.canViewFieldOutings)
+      const _NativeShortcut(
+        id: 'field-locations',
+        label: 'Locais de campo',
+        description: 'Consultar os pontos de encontro do campo.',
+        icon: Icons.place_outlined,
+      ),
     if (state.canViewLetters ||
         state.canViewTerritories ||
         state.canViewStreetCards)
@@ -1575,6 +1599,21 @@ class _AccountTab extends ConsumerWidget {
         Navigator.of(
           context,
         ).push(MaterialPageRoute<void>(builder: (_) => const TimersScreen()));
+        break;
+      case 'programacoes':
+        Navigator.of(context).push(
+          MaterialPageRoute<void>(builder: (_) => const ProgramacoesScreen()),
+        );
+        break;
+      case 'cart':
+        Navigator.of(
+          context,
+        ).push(MaterialPageRoute<void>(builder: (_) => const CartScreen()));
+        break;
+      case 'field-locations':
+        Navigator.of(context).push(
+          MaterialPageRoute<void>(builder: (_) => const FieldLocationsScreen()),
+        );
         break;
       case 'statistics':
         onNavigate('Início');
