@@ -284,6 +284,9 @@ String monthLabel(String month) {
 }
 
 /// m:ss (ou h:mm:ss); a diferença leva sinal. null vira "—".
+///
+/// `signed` continua existindo para quem precisa do sinal cru, mas as telas
+/// devem usar [DiferencaDeTempo]: o sinal é justamente o que não se lê bem.
 String formatSeconds(int? seconds, {bool signed = false}) {
   if (seconds == null) return '—';
   final abs = seconds.abs();
@@ -292,4 +295,78 @@ String formatSeconds(int? seconds, {bool signed = false}) {
       : '${abs ~/ 60}:${(abs % 60).toString().padLeft(2, '0')}';
   if (!signed) return body;
   return '${seconds < 0 ? '−' : (seconds > 0 ? '+' : '')}$body';
+}
+
+/// Em que situação uma diferença de tempo está.
+enum EstadoDaDiferenca {
+  /// Passou do tempo: a tela pinta de vermelho e engrossa.
+  estouro,
+
+  /// Sobrou tempo: entre parênteses, tinta normal — sobra não é alarme.
+  sobra,
+
+  /// Bateu certo.
+  exato,
+
+  /// Não medida ou sem previsto: travessão, nunca zero.
+  ausente,
+}
+
+/// A diferença entre previsto e usado, pronta para a tela.
+///
+/// POR QUE NÃO USA SINAL
+/// `+1:20` / `−0:45` eram ilegíveis no celular: o sinal é pequeno demais e o
+/// `+` parece a coisa boa quando é justamente o caso ruim. A forma passou a
+/// carregar o significado — vermelho para o que estourou, parênteses para o
+/// que sobrou.
+///
+/// Este é o mesmo contrato do `App\Support\DiferencaDeTempo` do servidor, que
+/// vale para as telas web e para o PDF. Os dois precisam continuar iguais: se
+/// um mudar, o outro muda junto, senão o mesmo número aparece de dois jeitos.
+class DiferencaDeTempo {
+  const DiferencaDeTempo(this.texto, this.estado, this.descricao);
+
+  /// O que aparece na tela, sem sinal.
+  final String texto;
+
+  final EstadoDaDiferenca estado;
+
+  /// Leitura por extenso, para leitores de tela.
+  final String descricao;
+
+  bool get estourou => estado == EstadoDaDiferenca.estouro;
+
+  static DiferencaDeTempo de(int? segundos) {
+    if (segundos == null) {
+      return const DiferencaDeTempo(
+        '—',
+        EstadoDaDiferenca.ausente,
+        'sem medição',
+      );
+    }
+
+    if (segundos == 0) {
+      return const DiferencaDeTempo(
+        '0:00',
+        EstadoDaDiferenca.exato,
+        'no tempo previsto',
+      );
+    }
+
+    final corpo = formatSeconds(segundos.abs());
+
+    if (segundos > 0) {
+      return DiferencaDeTempo(
+        corpo,
+        EstadoDaDiferenca.estouro,
+        '$corpo a mais que o previsto',
+      );
+    }
+
+    return DiferencaDeTempo(
+      '($corpo)',
+      EstadoDaDiferenca.sobra,
+      '$corpo a menos que o previsto',
+    );
+  }
 }

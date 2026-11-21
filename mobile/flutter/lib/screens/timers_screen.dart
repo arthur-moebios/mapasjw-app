@@ -258,12 +258,20 @@ class _RoomSection extends StatelessWidget {
                   ),
                 ),
               ),
-              Text(
-                formatSeconds(room.differenceSeconds, signed: true),
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  fontWeight: FontWeight.w700,
-                  color: room.differenceSeconds > 0 ? colors.error : null,
-                ),
+              Builder(
+                builder: (_) {
+                  final dif = DiferencaDeTempo.de(room.differenceSeconds);
+                  return Semantics(
+                    label: dif.descricao,
+                    child: Text(
+                      dif.texto,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                        color: dif.estourou ? colors.error : null,
+                      ),
+                    ),
+                  );
+                },
               ),
             ],
           ),
@@ -319,9 +327,20 @@ class _PartRow extends StatelessWidget {
                   style: overtimeStyle,
                 ),
               ),
-              Text(
-                formatSeconds(part.differenceSeconds, signed: true),
-                style: overtimeStyle,
+              Builder(
+                builder: (_) {
+                  final dif = DiferencaDeTempo.de(part.differenceSeconds);
+                  return Semantics(
+                    label: dif.descricao,
+                    child: Text(
+                      dif.texto,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: dif.estourou ? colors.error : null,
+                        fontWeight: dif.estourou ? FontWeight.w700 : null,
+                      ),
+                    ),
+                  );
+                },
               ),
             ],
           ),

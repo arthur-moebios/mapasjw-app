@@ -176,6 +176,31 @@ void main() {
       expect(formatSeconds(-30, signed: true), '−0:30');
       expect(formatSeconds(3725), '1:02:05');
       expect(formatSeconds(null), '—');
+
+      // O que as telas mostram: sem sinal. Vermelho e seco quando estourou,
+      // entre parênteses quando sobrou. Mesmo contrato do servidor
+      // (App\Support\DiferencaDeTempo) — os dois têm que bater.
+      final estouro = DiferencaDeTempo.de(45);
+      expect(estouro.texto, '0:45');
+      expect(estouro.estado, EstadoDaDiferenca.estouro);
+      expect(estouro.estourou, isTrue);
+
+      final sobra = DiferencaDeTempo.de(-30);
+      expect(sobra.texto, '(0:30)');
+      expect(sobra.estado, EstadoDaDiferenca.sobra);
+      expect(sobra.estourou, isFalse);
+
+      expect(DiferencaDeTempo.de(0).texto, '0:00');
+      expect(DiferencaDeTempo.de(0).estado, EstadoDaDiferenca.exato);
+      expect(DiferencaDeTempo.de(null).texto, '—');
+      expect(DiferencaDeTempo.de(null).estado, EstadoDaDiferenca.ausente);
+      expect(DiferencaDeTempo.de(3725).texto, '1:02:05');
+
+      // Nenhum sinal escapa para a tela.
+      for (final s in [45, -30, 0, 3725, -3725]) {
+        expect(DiferencaDeTempo.de(s).texto, isNot(contains('+')));
+        expect(DiferencaDeTempo.de(s).texto, isNot(contains('−')));
+      }
       expect(TimersPage.fromJson(const {}).days, isEmpty);
     });
 
