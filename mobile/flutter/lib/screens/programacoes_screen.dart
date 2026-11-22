@@ -28,14 +28,31 @@ class _ProgramacoesScreenState extends ConsumerState<ProgramacoesScreen> {
   String? _month;
 
   @override
+  void initState() {
+    super.initState();
+    _startFor(
+      ref.read(mobileAppControllerProvider).value?.selectedCongregationId,
+    );
+  }
+
+  void _startFor(int? congregationId) {
+    _congregationId = congregationId;
+    _month = null;
+    _future = congregationId == null ? null : _load();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    ref.listen<int?>(
+      mobileAppControllerProvider.select(
+        (value) => value.value?.selectedCongregationId,
+      ),
+      (previous, next) {
+        if (next != _congregationId) setState(() => _startFor(next));
+      },
+    );
     final app = ref.watch(mobileAppControllerProvider).requireValue;
     final congregationId = app.selectedCongregationId;
-    if (_congregationId != congregationId) {
-      _congregationId = congregationId;
-      _month = null;
-      _future = congregationId == null ? null : _load();
-    }
 
     return Scaffold(
       appBar: AppBar(title: const Text('Programações')),
@@ -48,21 +65,22 @@ class _ProgramacoesScreenState extends ConsumerState<ProgramacoesScreen> {
             )
           : Column(
               children: [
-                SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
+                Padding(
                   padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-                  child: Row(
-                    children: [
-                      for (final (key, label) in _types)
-                        Padding(
-                          padding: const EdgeInsets.only(right: 8),
-                          child: ChoiceChip(
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: Wrap(
+                      spacing: 8,
+                      runSpacing: 4,
+                      children: [
+                        for (final (key, label) in _types)
+                          ChoiceChip(
                             label: Text(label),
                             selected: _type == key,
                             onSelected: (_) => _setType(key),
                           ),
-                        ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
                 Expanded(
@@ -100,7 +118,8 @@ class _ProgramacoesScreenState extends ConsumerState<ProgramacoesScreen> {
     );
   }
 
-  Future<ProgramacoesMonth> _load() => ref
+  // `async`: erro síncrono vira Future com erro, mostrado pelo FutureBuilder.
+  Future<ProgramacoesMonth> _load() async => ref
       .read(mobileAppControllerProvider.notifier)
       .loadProgramacoes(type: _type, month: _month);
 

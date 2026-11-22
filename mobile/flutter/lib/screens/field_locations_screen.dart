@@ -22,13 +22,30 @@ class _FieldLocationsScreenState extends ConsumerState<FieldLocationsScreen> {
   bool _canManage = false;
 
   @override
+  void initState() {
+    super.initState();
+    _startFor(
+      ref.read(mobileAppControllerProvider).value?.selectedCongregationId,
+    );
+  }
+
+  void _startFor(int? congregationId) {
+    _congregationId = congregationId;
+    _future = congregationId == null ? null : _load();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    ref.listen<int?>(
+      mobileAppControllerProvider.select(
+        (value) => value.value?.selectedCongregationId,
+      ),
+      (previous, next) {
+        if (next != _congregationId) setState(() => _startFor(next));
+      },
+    );
     final app = ref.watch(mobileAppControllerProvider).requireValue;
     final congregationId = app.selectedCongregationId;
-    if (_congregationId != congregationId) {
-      _congregationId = congregationId;
-      _future = congregationId == null ? null : _load();
-    }
 
     return Scaffold(
       appBar: AppBar(title: const Text('Locais de campo')),

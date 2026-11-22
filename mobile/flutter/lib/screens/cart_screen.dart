@@ -1,3 +1,7 @@
+// Future.ignore() é extensão de dart:async: sem este import a extensão não
+// entra em escopo. Mesma convenção dos outros arquivos que usam unawaited().
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -23,16 +27,37 @@ class _CartScreenState extends ConsumerState<CartScreen> {
   int? _spotId;
 
   @override
+  void initState() {
+    super.initState();
+    _startFor(
+      ref.read(mobileAppControllerProvider).value?.selectedCongregationId,
+    );
+  }
+
+  void _startFor(int? congregationId) {
+    _congregationId = congregationId;
+    _month = null;
+    _spotId = null;
+    _calendar = congregationId == null ? null : _loadCalendar();
+    _signups = congregationId == null ? null : _loadSignups();
+    // A aba oculta não escuta o seu Future; sem isto, um erro nela viraria
+    // exceção não tratada. O FutureBuilder continua recebendo o erro.
+    _calendar?.ignore();
+    _signups?.ignore();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    ref.listen<int?>(
+      mobileAppControllerProvider.select(
+        (value) => value.value?.selectedCongregationId,
+      ),
+      (previous, next) {
+        if (next != _congregationId) setState(() => _startFor(next));
+      },
+    );
     final app = ref.watch(mobileAppControllerProvider).requireValue;
     final congregationId = app.selectedCongregationId;
-    if (_congregationId != congregationId) {
-      _congregationId = congregationId;
-      _month = null;
-      _spotId = null;
-      _calendar = congregationId == null ? null : _loadCalendar();
-      _signups = congregationId == null ? null : _loadSignups();
-    }
 
     return Scaffold(
       appBar: AppBar(title: const Text('Carrinho')),
@@ -46,14 +71,15 @@ class _CartScreenState extends ConsumerState<CartScreen> {
               children: [
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-                  child: Row(
+                  child: Wrap(
+                    spacing: 8,
+                    runSpacing: 4,
                     children: [
                       ChoiceChip(
                         label: const Text('Calendário'),
                         selected: !_showSignups,
                         onSelected: (_) => setState(() => _showSignups = false),
                       ),
-                      const SizedBox(width: 8),
                       ChoiceChip(
                         label: const Text('Minhas inscrições'),
                         selected: _showSignups,
@@ -151,11 +177,13 @@ class _CartScreenState extends ConsumerState<CartScreen> {
     },
   );
 
-  Future<CartCalendar> _loadCalendar() => ref
+  // `async` garante que até um erro síncrono vire um Future com erro,
+  // exibido pelo FutureBuilder em vez de escapar do ciclo de vida do widget.
+  Future<CartCalendar> _loadCalendar() async => ref
       .read(mobileAppControllerProvider.notifier)
       .loadCartCalendar(month: _month, spotId: _spotId);
 
-  Future<CartMySignups> _loadSignups() =>
+  Future<CartMySignups> _loadSignups() async =>
       ref.read(mobileAppControllerProvider.notifier).loadCartMySignups();
 
   Future<void> _reloadCalendar() async {
@@ -255,6 +283,7 @@ class _CalendarBody extends StatelessWidget {
             DropdownButtonFormField<int?>(
               key: ValueKey('spot-$spotId'),
               initialValue: spotId,
+              isExpanded: true,
               decoration: const InputDecoration(labelText: 'Ponto'),
               items: [
                 const DropdownMenuItem<int?>(

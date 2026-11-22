@@ -270,7 +270,10 @@ void main() {
       );
       await tester.pump();
       await tester.tap(find.text('Conta'));
-      await tester.pumpAndSettle();
+      // A aba Campo (montada no IndexedStack quando permitida) mantém um
+      // indicador de carregamento animado enquanto o calendário não chega;
+      // pumpAndSettle nunca terminaria, então avançamos tempo fixo.
+      await tester.pump(const Duration(milliseconds: 500));
 
       expect(find.text('Pessoas'), findsOneWidget);
       expect(find.text('Programações'), allowed ? findsOneWidget : findsNothing);
