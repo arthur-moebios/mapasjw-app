@@ -178,65 +178,142 @@ class _LocationTile extends StatelessWidget {
     final theme = Theme.of(context);
     final active = location.active;
     final muted = theme.colorScheme.outline;
+    final scheme = theme.colorScheme;
+    final secondary = scheme.onSurfaceVariant;
+    Widget line(IconData icon, String text) => Padding(
+      padding: const EdgeInsets.only(top: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 16, color: secondary),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              text,
+              style: theme.textTheme.bodyMedium?.copyWith(color: secondary),
+            ),
+          ),
+        ],
+      ),
+    );
     return Opacity(
       opacity: active ? 1 : 0.6,
       child: Card(
         margin: const EdgeInsets.only(top: 12),
-        child: ListTile(
-          leading: Icon(
-            location.online ? Icons.videocam_outlined : Icons.place_outlined,
-            color: active ? null : muted,
-          ),
-          title: Text(
-            location.name,
-            style: active
-                ? null
-                : TextStyle(
-                    decoration: TextDecoration.lineThrough,
-                    color: muted,
-                  ),
-          ),
-          subtitle: Column(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 4, 12),
+          child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              if (!active)
-                Text(
-                  'Desativado',
-                  style: theme.textTheme.labelMedium?.copyWith(color: muted),
+              Padding(
+                padding: const EdgeInsets.only(top: 2, right: 12),
+                child: Icon(
+                  location.online
+                      ? Icons.videocam_outlined
+                      : Icons.place_outlined,
+                  color: active ? scheme.primary : muted,
                 ),
-              if (location.online) const Text('Reunião online'),
-              if (location.address.isNotEmpty) Text(location.address),
-              if (location.reference.isNotEmpty)
-                Text('Ref.: ${location.reference}'),
-            ],
-          ),
-          isThreeLine: true,
-          trailing: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (location.mapsUrl.isNotEmpty)
-                IconButton(
-                  tooltip: 'Abrir no mapa',
-                  icon: const Icon(Icons.map_outlined),
-                  onPressed: () {
-                    final uri = Uri.tryParse(location.mapsUrl);
-                    if (uri != null) {
-                      launchUrl(uri, mode: LaunchMode.externalApplication);
-                    }
-                  },
+              ),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      location.name,
+                      style: theme.textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w700,
+                        decoration: active ? null : TextDecoration.lineThrough,
+                        color: active ? null : muted,
+                      ),
+                    ),
+                    if (!active || location.online)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 6),
+                        child: Wrap(
+                          spacing: 6,
+                          runSpacing: 4,
+                          children: [
+                            if (!active)
+                              _StatusChip(
+                                label: 'Desativado',
+                                background: scheme.errorContainer,
+                                foreground: scheme.onErrorContainer,
+                              ),
+                            if (location.online)
+                              _StatusChip(
+                                label: 'Reunião online',
+                                background: scheme.secondaryContainer,
+                                foreground: scheme.onSecondaryContainer,
+                              ),
+                          ],
+                        ),
+                      ),
+                    if (location.address.isNotEmpty)
+                      line(Icons.signpost_outlined, location.address),
+                    if (location.reference.isNotEmpty)
+                      line(
+                        Icons.info_outline_rounded,
+                        'Ref.: ${location.reference}',
+                      ),
+                  ],
                 ),
-              if (canManage)
-                IconButton(
-                  tooltip: 'Editar local',
-                  icon: const Icon(Icons.edit_outlined),
-                  onPressed: onEdit,
-                ),
+              ),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (location.mapsUrl.isNotEmpty)
+                    IconButton(
+                      tooltip: 'Abrir no mapa',
+                      icon: const Icon(Icons.map_outlined),
+                      onPressed: () {
+                        final uri = Uri.tryParse(location.mapsUrl);
+                        if (uri != null) {
+                          launchUrl(uri, mode: LaunchMode.externalApplication);
+                        }
+                      },
+                    ),
+                  if (canManage)
+                    IconButton(
+                      tooltip: 'Editar local',
+                      icon: const Icon(Icons.edit_outlined),
+                      onPressed: onEdit,
+                    ),
+                ],
+              ),
             ],
           ),
         ),
       ),
     );
   }
+}
+
+class _StatusChip extends StatelessWidget {
+  const _StatusChip({
+    required this.label,
+    required this.background,
+    required this.foreground,
+  });
+
+  final String label;
+  final Color background;
+  final Color foreground;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+    decoration: BoxDecoration(
+      color: background,
+      borderRadius: BorderRadius.circular(999),
+    ),
+    child: Text(
+      label,
+      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+        color: foreground,
+        fontWeight: FontWeight.w700,
+      ),
+    ),
+  );
 }
 
 class _LocationDialog extends StatefulWidget {
@@ -288,10 +365,7 @@ class _LocationDialogState extends State<_LocationDialog> {
             TextField(
               controller: _name,
               textCapitalization: TextCapitalization.words,
-              decoration: InputDecoration(
-                labelText: 'Nome',
-                errorText: _error,
-              ),
+              decoration: InputDecoration(labelText: 'Nome', errorText: _error),
             ),
             TextField(
               controller: _address,

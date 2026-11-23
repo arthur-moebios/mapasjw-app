@@ -488,7 +488,12 @@ class _CoverageTabState extends _LoadingTabState<_CoverageTab, CoverageData> {
             fontWeight: FontWeight.w800,
           ),
         ),
-        subtitle: Text(rule, style: theme.textTheme.bodySmall),
+        subtitle: Text(
+          rule,
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+        ),
         childrenPadding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
         children: [
           if (items.isEmpty)
@@ -496,7 +501,10 @@ class _CoverageTabState extends _LoadingTabState<_CoverageTab, CoverageData> {
               padding: EdgeInsets.all(8),
               child: Text('Nada pendente aqui.'),
             ),
-          for (final item in items.take(6)) _boardTile(d, item, canRegister),
+          for (var i = 0; i < items.take(6).length; i++) ...[
+            if (i > 0) const Divider(height: 1),
+            _boardTile(d, items[i], canRegister),
+          ],
           if (items.length > 6)
             ExpansionTile(
               shape: const Border(),
@@ -525,8 +533,22 @@ class _CoverageTabState extends _LoadingTabState<_CoverageTab, CoverageData> {
     return ListTile(
       dense: true,
       contentPadding: EdgeInsets.zero,
-      title: Text(item.title, maxLines: 2, overflow: TextOverflow.ellipsis),
-      subtitle: details.isEmpty ? null : Text(details.join(' · ')),
+      title: Text(
+        item.title,
+        maxLines: 2,
+        overflow: TextOverflow.ellipsis,
+        style: Theme.of(
+          context,
+        ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
+      ),
+      subtitle: details.isEmpty
+          ? null
+          : Text(
+              details.join(' · '),
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+            ),
       trailing: _StateChip(item.state),
       onTap: () => _showCard(d, item.cardId, canRegister),
     );
@@ -556,12 +578,20 @@ class _CoverageTabState extends _LoadingTabState<_CoverageTab, CoverageData> {
                   Row(
                     children: [
                       Expanded(
-                        child: Text(row.label, overflow: TextOverflow.ellipsis),
+                        child: Text(
+                          row.label,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
                       ),
                       Text(
                         '${row.done}/${row.total} · ${row.percentDone.toStringAsFixed(0)}% · '
                         '${row.kmLeft.toStringAsFixed(1)} km faltam',
-                        style: theme.textTheme.bodySmall,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
                       ),
                     ],
                   ),
@@ -992,8 +1022,13 @@ class _OpenCardsTabState
               ],
             ),
             const SizedBox(height: 4),
-            Text(details.join(' · '), style: theme.textTheme.bodySmall),
-            const SizedBox(height: 8),
+            Text(
+              details.join(' · '),
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+            const Divider(height: 20),
             Text(
               '${card.workedStreets.length} de ${card.streets.length} rua(s) trabalhada(s)',
               style: theme.textTheme.bodySmall?.copyWith(
@@ -1182,13 +1217,17 @@ class _S13TabState extends _LoadingTabState<_S13Tab, S13Sheet> {
                             row.place,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: theme.textTheme.bodySmall,
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: theme.colorScheme.onSurfaceVariant,
+                            ),
                           ),
                         ),
                         if (row.lastCompletion != null)
                           Text(
                             'última: ${_formatDate(row.lastCompletion)}',
-                            style: theme.textTheme.bodySmall,
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: theme.colorScheme.onSurfaceVariant,
+                            ),
                           ),
                       ],
                     ),
@@ -1197,19 +1236,27 @@ class _S13TabState extends _LoadingTabState<_S13Tab, S13Sheet> {
                         padding: const EdgeInsets.only(top: 6),
                         child: Text(
                           row.continuation ? '' : 'Sem designação neste ano.',
-                          style: theme.textTheme.bodySmall,
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      )
+                    else
+                      const Divider(height: 16),
+                    for (var i = 0; i < row.assignments.length; i++) ...[
+                      if (i > 0) const Divider(height: 12),
+                      Text(
+                        (row.assignments[i].publisher ?? '---').toUpperCase(),
+                        style: theme.textTheme.labelLarge,
+                      ),
+                      Text(
+                        '${_formatDate(row.assignments[i].assignedAt)} → '
+                        '${row.assignments[i].completedAt == null ? 'em aberto' : _formatDate(row.assignments[i].completedAt)}',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
                         ),
                       ),
-                    for (final item in row.assignments)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 6),
-                        child: Text(
-                          '${(item.publisher ?? '---').toUpperCase()}\n'
-                          '${_formatDate(item.assignedAt)} → '
-                          '${item.completedAt == null ? 'em aberto' : _formatDate(item.completedAt)}',
-                          style: theme.textTheme.bodySmall,
-                        ),
-                      ),
+                    ],
                   ],
                 ),
               ),
@@ -1401,8 +1448,13 @@ class _AvailabilityTabState
                       ),
                     ),
                     if (leader.slots.isEmpty)
-                      Text('não informou', style: theme.textTheme.bodySmall),
-                    const SizedBox(height: 8),
+                      Text(
+                        'não informou',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    const Divider(height: 16),
                     SingleChildScrollView(
                       scrollDirection: Axis.horizontal,
                       child: Row(

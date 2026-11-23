@@ -92,8 +92,9 @@ class _CircuitOverviewScreenState extends ConsumerState<CircuitOverviewScreen> {
               children: [
                 Text(
                   'Visão geral do circuito',
-                  style: Theme.of(context).textTheme.headlineSmall
-                      ?.copyWith(fontWeight: FontWeight.w700),
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
                 const SizedBox(height: 4),
                 Text(
@@ -107,8 +108,9 @@ class _CircuitOverviewScreenState extends ConsumerState<CircuitOverviewScreen> {
                 const SizedBox(height: 18),
                 Text(
                   'Limites históricos',
-                  style: Theme.of(context).textTheme.titleLarge
-                      ?.copyWith(fontWeight: FontWeight.w700),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
                 ),
                 const SizedBox(height: 8),
                 DropdownButtonFormField<int?>(
@@ -153,8 +155,9 @@ class _CircuitOverviewScreenState extends ConsumerState<CircuitOverviewScreen> {
                 const SizedBox(height: 18),
                 Text(
                   'Atividade por congregação',
-                  style: Theme.of(context).textTheme.titleLarge
-                      ?.copyWith(fontWeight: FontWeight.w700),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
                 ),
                 const SizedBox(height: 8),
                 if (congregations.isEmpty)
@@ -261,8 +264,9 @@ class _TotalTile extends StatelessWidget {
         children: [
           Text(
             value.toString(),
-            style: Theme.of(context).textTheme.headlineSmall
-                ?.copyWith(fontWeight: FontWeight.w800),
+            style: Theme.of(
+              context,
+            ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800),
           ),
           const SizedBox(height: 3),
           Text(
@@ -447,8 +451,11 @@ class _CongregationSummaryCard extends StatelessWidget {
                 Expanded(
                   child: Text(
                     summary.name,
-                    style: Theme.of(context).textTheme.titleMedium
-                        ?.copyWith(fontWeight: FontWeight.w700),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ),
                 _MetricBadge(
@@ -477,18 +484,21 @@ class _CongregationSummaryCard extends StatelessWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 11),
+            const Divider(height: 22),
             Text(
               summary.legacyCards == 0
                   ? 'Sem cartões históricos para medir uso'
                   : 'Cartões históricos com registro: ${summary.legacyCardsWorked} de ${summary.legacyCards}${usage == null ? '' : ' · $usage%'}',
-              style: Theme.of(context).textTheme.bodyMedium,
+              style: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
             ),
             const SizedBox(height: 4),
             Text(
               '${summary.workEntries} registros de trabalho · ${summary.routePoints} pontos de percurso',
-              style: Theme.of(context).textTheme.bodySmall
-                  ?.copyWith(color: colors.onSurfaceVariant),
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant),
             ),
           ],
         ),
@@ -513,8 +523,10 @@ class _MetricBadge extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
       child: Text(
         label,
-        style: Theme.of(context).textTheme.labelSmall
-            ?.copyWith(color: color, fontWeight: FontWeight.w700),
+        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+          color: color,
+          fontWeight: FontWeight.w700,
+        ),
       ),
     ),
   );
@@ -548,7 +560,13 @@ class _OverviewMessage extends StatelessWidget {
             style: Theme.of(context).textTheme.titleLarge,
           ),
           const SizedBox(height: 7),
-          Text(message, textAlign: TextAlign.center),
+          Text(
+            message,
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+          ),
           if (action != null) ...[const SizedBox(height: 14), action!],
         ],
       ),

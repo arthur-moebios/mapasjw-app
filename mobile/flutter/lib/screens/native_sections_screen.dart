@@ -62,7 +62,8 @@ class DashboardScreen extends ConsumerWidget {
           const _SectionMessage(
             icon: Icons.apartment_rounded,
             title: 'Escolha uma congregação',
-            message: 'As estatísticas individuais aparecem depois que você escolhe uma congregação.',
+            message:
+                'As estatísticas individuais aparecem depois que você escolhe uma congregação.',
           ),
         ],
       );
@@ -115,8 +116,9 @@ class DashboardScreen extends ConsumerWidget {
               onStart: () async {
                 final message = await controller.startAutomaticRoute();
                 if (!context.mounted || message == null) return;
-                ScaffoldMessenger.of(context)
-                    .showSnackBar(SnackBar(content: Text(message)));
+                ScaffoldMessenger.of(
+                  context,
+                ).showSnackBar(SnackBar(content: Text(message)));
               },
               onStop: controller.stopRoute,
               onOpenCards: () => onNavigate('Cartões'),
@@ -182,7 +184,8 @@ class DashboardScreen extends ConsumerWidget {
                 child: _SectionMessage(
                   icon: Icons.query_stats_rounded,
                   title: 'Ainda sem estatísticas',
-                  message: 'Não há dados disponíveis para as áreas que sua conta pode consultar.',
+                  message:
+                      'Não há dados disponíveis para as áreas que sua conta pode consultar.',
                 ),
               ),
             if (summary.generatedAt != null) ...[
@@ -293,8 +296,9 @@ class _DashboardRouteRecorderCard extends StatelessWidget {
                       const SizedBox(height: 3),
                       Text(
                         description,
-                        style: Theme.of(context).textTheme.bodySmall
-                            ?.copyWith(color: colors.onSurfaceVariant),
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: colors.onSurfaceVariant,
+                        ),
                       ),
                     ],
                   ),
@@ -574,8 +578,9 @@ class _DashboardTodayOutingTile extends StatelessWidget {
                   outing.location == null
                       ? 'Defina um local para identificar os cartões.'
                       : 'Nenhum cartão em aberto está associado a este local.',
-                  style: Theme.of(context).textTheme.bodySmall
-                      ?.copyWith(color: colors.onSurfaceVariant),
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: colors.onSurfaceVariant,
+                  ),
                 )
               else
                 Wrap(
@@ -757,8 +762,10 @@ class _DashboardStatusBadge extends StatelessWidget {
     ),
     child: Text(
       label,
-      style: Theme.of(context).textTheme.labelSmall
-          ?.copyWith(color: color, fontWeight: FontWeight.w700),
+      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+        color: color,
+        fontWeight: FontWeight.w700,
+      ),
     ),
   );
 }
@@ -819,7 +826,12 @@ class _DashboardLetterCard extends StatelessWidget {
                     ),
                     Padding(
                       padding: const EdgeInsets.only(left: 7, bottom: 5),
-                      child: Text('de $total entregues'),
+                      child: Text(
+                        'de $total entregues',
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                      ),
                     ),
                     const Spacer(),
                     _CountBadge(
@@ -849,10 +861,12 @@ class _DashboardLetterCard extends StatelessWidget {
                         .toList(growable: false),
                   ),
                 ],
-                const SizedBox(height: 12),
+                const Divider(height: 24),
                 Text(
                   '${summary.condominiumsCount ?? 0} condomínios · ${summary.workedCount ?? 0} endereços trabalhados',
-                  style: Theme.of(context).textTheme.bodySmall,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
                 ),
               ],
             ),
@@ -875,8 +889,9 @@ class _DashboardTerritoryCard extends StatelessWidget {
     child: Text(
       'Os limites e indicadores de cobertura pertencem ao cadastro antigo. '
       'O andamento atual é acompanhado pelos cartões de rua.',
-      style: Theme.of(context).textTheme.bodySmall
-          ?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
+      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+        color: Theme.of(context).colorScheme.onSurfaceVariant,
+      ),
     ),
   );
 }
@@ -990,10 +1005,16 @@ class _DashboardNumber extends StatelessWidget {
     children: [
       Text(
         '$value',
-        style: Theme.of(context).textTheme.titleLarge
-            ?.copyWith(fontWeight: FontWeight.w700),
+        style: Theme.of(
+          context,
+        ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
       ),
-      Text(label, style: Theme.of(context).textTheme.bodySmall),
+      Text(
+        label,
+        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+          color: Theme.of(context).colorScheme.onSurfaceVariant,
+        ),
+      ),
     ],
   );
 }
@@ -1026,7 +1047,8 @@ class _LettersScreenState extends ConsumerState<LettersScreen> {
       return const _SectionMessage(
         icon: Icons.apartment_rounded,
         title: 'Escolha uma congregação',
-        message: 'Selecione uma congregação para consultar as cartas e os endereços.',
+        message:
+            'Selecione uma congregação para consultar as cartas e os endereços.',
       );
     }
     if (!state.canViewLetters) {
@@ -1356,8 +1378,9 @@ class _CondominiumListCard extends StatelessWidget {
                     condominium.address,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.bodyMedium
-                        ?.copyWith(color: colors.onSurfaceVariant),
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: colors.onSurfaceVariant,
+                    ),
                   ),
                 ],
                 const SizedBox(height: 12),
@@ -1390,7 +1413,7 @@ class _CondominiumListCard extends StatelessWidget {
                   ],
                 ),
                 if (progress != null) ...[
-                  const SizedBox(height: 13),
+                  const Divider(height: 24),
                   Row(
                     children: [
                       Expanded(
@@ -1421,8 +1444,9 @@ class _CondominiumListCard extends StatelessWidget {
                     '${condominium.deliveredCount} de $count entregues${condominium.campaignName == null ? '' : ' · ${condominium.campaignName}'}',
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.bodySmall
-                        ?.copyWith(color: colors.onSurfaceVariant),
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: colors.onSurfaceVariant,
+                    ),
                   ),
                 ],
               ],
@@ -1467,8 +1491,10 @@ class _LetterInfoBadge extends StatelessWidget {
             const SizedBox(width: 5),
             Text(
               label,
-              style: Theme.of(context).textTheme.labelMedium
-                  ?.copyWith(color: color, fontWeight: FontWeight.w600),
+              style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                color: color,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ],
         ),
@@ -1959,7 +1985,8 @@ class _StreetCardsScreenState extends ConsumerState<StreetCardsScreen> {
               child: _SectionMessage(
                 icon: Icons.route_outlined,
                 title: 'Nenhum cartão de rua disponível',
-                message: 'Os cartões cadastrados para esta congregação aparecerão aqui.',
+                message:
+                    'Os cartões cadastrados para esta congregação aparecerão aqui.',
               ),
             ),
           if (state.streetCards.isNotEmpty && filteredCards.isEmpty)
@@ -1968,7 +1995,8 @@ class _StreetCardsScreenState extends ConsumerState<StreetCardsScreen> {
               child: _SectionMessage(
                 icon: Icons.search_off_rounded,
                 title: 'Nenhum cartão encontrado',
-                message: 'Tente outro nome de rua ou remova os filtros selecionados.',
+                message:
+                    'Tente outro nome de rua ou remova os filtros selecionados.',
                 actionLabel: 'Limpar pesquisa e filtros',
                 onAction: _clearStreetCardFilters,
               ),
@@ -2665,18 +2693,33 @@ class _ImportMapSummary extends StatelessWidget {
             ),
             if (!imported) ...[
               const SizedBox(height: 10),
-              const Text('Esta conferência não grava nenhuma alteração.'),
+              Text(
+                'Esta conferência não grava nenhuma alteração.',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
             ],
             if (sampleNames.isNotEmpty) ...[
-              const SizedBox(height: 12),
-              Text('Exemplos', style: theme.textTheme.labelLarge),
+              const Divider(height: 24),
+              Text(
+                'Exemplos',
+                style: theme.textTheme.labelLarge?.copyWith(
+                  color: theme.colorScheme.secondary,
+                ),
+              ),
               const SizedBox(height: 4),
               for (final name in sampleNames)
                 Text(name, maxLines: 1, overflow: TextOverflow.ellipsis),
             ],
             if (distribution.isNotEmpty) ...[
-              const SizedBox(height: 12),
-              Text('Destino dos trechos', style: theme.textTheme.labelLarge),
+              const Divider(height: 24),
+              Text(
+                'Destino dos trechos',
+                style: theme.textTheme.labelLarge?.copyWith(
+                  color: theme.colorScheme.secondary,
+                ),
+              ),
               const SizedBox(height: 4),
               for (final item in distribution)
                 Padding(
@@ -2685,8 +2728,13 @@ class _ImportMapSummary extends StatelessWidget {
                 ),
             ],
             if (warnings.isNotEmpty) ...[
-              const SizedBox(height: 12),
-              Text('Observações', style: theme.textTheme.labelLarge),
+              const Divider(height: 24),
+              Text(
+                'Observações',
+                style: theme.textTheme.labelLarge?.copyWith(
+                  color: theme.colorScheme.secondary,
+                ),
+              ),
               const SizedBox(height: 4),
               for (final warning in warnings)
                 Padding(
@@ -2807,11 +2855,12 @@ class _StreetCardListItem extends StatelessWidget {
                   card.description,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.bodyMedium
-                      ?.copyWith(color: colors.onSurfaceVariant),
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: colors.onSurfaceVariant,
+                  ),
                 ),
               ],
-              const SizedBox(height: 14),
+              const Divider(height: 24),
               Text(
                 'RUAS ATENDIDAS',
                 style: Theme.of(context).textTheme.labelSmall?.copyWith(
@@ -2824,8 +2873,9 @@ class _StreetCardListItem extends StatelessWidget {
               if (visibleStreetNames.isEmpty)
                 Text(
                   'Nomes das ruas ainda não cadastrados.',
-                  style: Theme.of(context).textTheme.bodyMedium
-                      ?.copyWith(color: colors.onSurfaceVariant),
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: colors.onSurfaceVariant,
+                  ),
                 )
               else
                 Wrap(
@@ -2843,7 +2893,7 @@ class _StreetCardListItem extends StatelessWidget {
                       ),
                   ],
                 ),
-              const SizedBox(height: 13),
+              const Divider(height: 24),
               Wrap(
                 spacing: 8,
                 runSpacing: 8,
@@ -3169,7 +3219,7 @@ class _StreetCardDetailScreenState
                       ),
                   ],
                 ),
-                const SizedBox(height: 18),
+                const Divider(height: 32),
                 Row(
                   children: [
                     Expanded(
@@ -3269,32 +3319,34 @@ class _StreetCardDetailScreenState
                     text: 'Nenhum percurso corresponde a estes filtros.',
                   )
                 else
-                  ...visibleRoutes.map(
-                    (route) => ListTile(
-                      contentPadding: EdgeInsets.zero,
-                      leading: Icon(
-                        route.isTest
-                            ? Icons.science_outlined
-                            : Icons.route_rounded,
-                        color: route.color,
-                      ),
-                      title: Text(
-                        '${route.isTest ? 'Teste' : 'Percurso'} · ${route.name}',
-                      ),
-                      subtitle: Text(
-                        '${_recordedRouteTimeLabel(route)} · '
-                        '${route.pointCount} posições salvas',
-                      ),
-                      trailing: const Icon(Icons.open_in_full_rounded),
-                      onTap: () => _openStreetCardMap(
-                        context,
-                        detail,
-                        focusRouteId: route.id,
-                        routes: visibleRoutes,
+                  ..._separatedTiles(
+                    visibleRoutes.map(
+                      (route) => ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        leading: Icon(
+                          route.isTest
+                              ? Icons.science_outlined
+                              : Icons.route_rounded,
+                          color: route.color,
+                        ),
+                        title: Text(
+                          '${route.isTest ? 'Teste' : 'Percurso'} · ${route.name}',
+                        ),
+                        subtitle: Text(
+                          '${_recordedRouteTimeLabel(route)} · '
+                          '${route.pointCount} posições salvas',
+                        ),
+                        trailing: const Icon(Icons.open_in_full_rounded),
+                        onTap: () => _openStreetCardMap(
+                          context,
+                          detail,
+                          focusRouteId: route.id,
+                          routes: visibleRoutes,
+                        ),
                       ),
                     ),
                   ),
-                const SizedBox(height: 18),
+                const Divider(height: 32),
                 Row(
                   children: [
                     Expanded(
@@ -3306,21 +3358,34 @@ class _StreetCardDetailScreenState
                     _CountBadge(count: detail.streets.length, label: 'trechos'),
                   ],
                 ),
-                ...detail.streets.map(
-                  (street) => ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    leading: const Icon(Icons.timeline_rounded),
-                    title: Text(street.name),
-                    subtitle: Text(
-                      [
-                        if (street.startAddress.isNotEmpty) street.startAddress,
-                        if (street.endAddress.isNotEmpty)
-                          'até ${street.endAddress}',
-                      ].join(' · '),
+                if (detail.streets.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: Text(
+                      'Nenhum trecho de rua cadastrado.',
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ),
+                ..._separatedTiles(
+                  detail.streets.map(
+                    (street) => ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: const Icon(Icons.timeline_rounded),
+                      title: Text(street.name),
+                      subtitle: Text(
+                        [
+                          if (street.startAddress.isNotEmpty)
+                            street.startAddress,
+                          if (street.endAddress.isNotEmpty)
+                            'até ${street.endAddress}',
+                        ].join(' · '),
+                      ),
                     ),
                   ),
                 ),
-                const Divider(height: 26),
+                const Divider(height: 32),
                 Row(
                   children: [
                     Expanded(
@@ -3335,21 +3400,34 @@ class _StreetCardDetailScreenState
                     ),
                   ],
                 ),
-                ...detail.entrances.map(
-                  (entrance) => ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    leading: const Icon(Icons.meeting_room_outlined),
-                    title: Text(entrance.name),
-                    subtitle: Text(
-                      '${entrance.position.latitude.toStringAsFixed(5)}, ${entrance.position.longitude.toStringAsFixed(5)}',
+                if (detail.entrances.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: Text(
+                      'Nenhuma entrada marcada.',
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ),
+                ..._separatedTiles(
+                  detail.entrances.map(
+                    (entrance) => ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: const Icon(Icons.meeting_room_outlined),
+                      title: Text(entrance.name),
+                      subtitle: Text(
+                        '${entrance.position.latitude.toStringAsFixed(5)}, ${entrance.position.longitude.toStringAsFixed(5)}',
+                      ),
                     ),
                   ),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 12),
                 Card(
                   color: isTrackingThisCard || detail.canRecordRoute
-                      ? Theme.of(context).colorScheme.primaryContainer
-                            .withValues(alpha: 0.55)
+                      ? Theme.of(
+                          context,
+                        ).colorScheme.primaryContainer.withValues(alpha: 0.55)
                       : Theme.of(context).colorScheme.surfaceContainerHighest,
                   child: Padding(
                     padding: const EdgeInsets.all(16),
@@ -3386,11 +3464,16 @@ class _StreetCardDetailScreenState
                           const SizedBox(height: 8),
                           Text(
                             'Referência legada: ${detail.summary.originTerritoryCode} · ${detail.summary.originTerritoryName}. A cobertura histórica do território continuará preservada.',
-                            style: Theme.of(context).textTheme.bodySmall,
+                            style: Theme.of(context).textTheme.bodySmall
+                                ?.copyWith(
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onSurfaceVariant,
+                                ),
                           ),
                         ],
                         if (isTrackingThisCard && appState != null) ...[
-                          const SizedBox(height: 8),
+                          const Divider(height: 20),
                           Text(
                             appState.isTestTracking
                                 ? 'Percurso de teste: não altera a cobertura real.'
@@ -3425,9 +3508,9 @@ class _StreetCardDetailScreenState
                               label: const Text('Encerrar percurso'),
                               style: FilledButton.styleFrom(
                                 minimumSize: const Size.fromHeight(48),
-                                backgroundColor: Theme.of(context)
-                                    .colorScheme
-                                    .error,
+                                backgroundColor: Theme.of(
+                                  context,
+                                ).colorScheme.error,
                               ),
                             ),
                           )
@@ -3483,9 +3566,9 @@ class _StreetCardDetailScreenState
                                 Expanded(
                                   child: Text(
                                     '${detail.testRoutePointsCount} ponto(s) de teste',
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .bodySmall,
+                                    style: Theme.of(
+                                      context,
+                                    ).textTheme.bodySmall,
                                   ),
                                 ),
                                 TextButton.icon(
@@ -3613,8 +3696,9 @@ class _StreetCardDetailScreenState
         .read(mobileAppControllerProvider.notifier)
         .startStreetCardRoute(widget.card.id, testMode: testMode);
     if (message != null && mounted) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(message)));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(message)));
     }
   }
 
@@ -3645,8 +3729,9 @@ class _StreetCardDetailScreenState
         .read(mobileAppControllerProvider.notifier)
         .clearStreetCardTestRoutePoints(widget.card.id);
     if (!mounted) return;
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text(message ?? 'Teste limpo.')));
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message ?? 'Teste limpo.')));
     setState(() {
       _detail = ref
           .read(mobileAppControllerProvider.notifier)
@@ -3715,6 +3800,17 @@ class _StreetCardDetailScreenState
       ),
     );
   }
+}
+
+/// Intercala um [Divider] entre os itens de uma lista de linhas.
+List<Widget> _separatedTiles(Iterable<Widget> tiles) {
+  final items = tiles.toList(growable: false);
+  return [
+    for (var i = 0; i < items.length; i++) ...[
+      if (i > 0) const Divider(height: 1),
+      items[i],
+    ],
+  ];
 }
 
 class _StreetCardQuickActions extends StatelessWidget {
@@ -4209,8 +4305,10 @@ class _LetterStatusBadge extends StatelessWidget {
     ),
     child: Text(
       label,
-      style: Theme.of(context).textTheme.labelSmall
-          ?.copyWith(color: color, fontWeight: FontWeight.w700),
+      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+        color: color,
+        fontWeight: FontWeight.w700,
+      ),
     ),
   );
 }
@@ -4267,7 +4365,12 @@ class _LetterBlockCard extends StatelessWidget {
                             ),
                           ),
                           const SizedBox(height: 2),
-                          Text(group.summary, style: theme.textTheme.bodySmall),
+                          Text(
+                            group.summary,
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: theme.colorScheme.onSurfaceVariant,
+                            ),
+                          ),
                           const SizedBox(height: 6),
                           Wrap(
                             spacing: 10,
@@ -4432,8 +4535,9 @@ class _ApartmentStatusTile extends StatelessWidget {
                             apartment.writtenBy!,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: Theme.of(context).textTheme.labelSmall
-                                ?.copyWith(fontSize: 7.5),
+                            style: Theme.of(
+                              context,
+                            ).textTheme.labelSmall?.copyWith(fontSize: 7.5),
                           ),
                       ],
                     ),

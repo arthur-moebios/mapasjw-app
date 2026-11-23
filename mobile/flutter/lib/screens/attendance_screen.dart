@@ -135,7 +135,12 @@ class _AttendanceBody extends StatelessWidget {
           const SizedBox(height: 8),
           _AveragesCard(averages: data.averages),
           const SizedBox(height: 16),
-          Text('Reuniões do mês', style: theme.textTheme.titleMedium),
+          Text(
+            'Reuniões do mês',
+            style: theme.textTheme.labelLarge?.copyWith(
+              color: theme.colorScheme.secondary,
+            ),
+          ),
           const SizedBox(height: 8),
           if (data.records.isEmpty)
             const _Message(
@@ -166,11 +171,17 @@ class _AveragesCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Médias do mês', style: theme.textTheme.titleSmall),
-            const SizedBox(height: 8),
-            for (final average in averages)
+            Text(
+              'Médias do mês',
+              style: theme.textTheme.titleSmall?.copyWith(
+                color: colors.primary,
+              ),
+            ),
+            const Divider(height: 20),
+            for (var i = 0; i < averages.length; i++) ...[
+              if (i > 0) const Divider(height: 12),
               Padding(
-                padding: const EdgeInsets.symmetric(vertical: 6),
+                padding: const EdgeInsets.symmetric(vertical: 4),
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
@@ -178,9 +189,14 @@ class _AveragesCard extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(average.label),
                           Text(
-                            _detail(average),
+                            averages[i].label,
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          Text(
+                            _detail(averages[i]),
                             style: theme.textTheme.bodySmall?.copyWith(
                               color: colors.onSurfaceVariant,
                             ),
@@ -189,9 +205,9 @@ class _AveragesCard extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      average.average?.toString() ?? '—',
+                      averages[i].average?.toString() ?? '—',
                       style: theme.textTheme.headlineSmall?.copyWith(
-                        color: average.average == null
+                        color: averages[i].average == null
                             ? colors.onSurfaceVariant
                             : colors.primary,
                         fontWeight: FontWeight.w800,
@@ -200,6 +216,7 @@ class _AveragesCard extends StatelessWidget {
                   ],
                 ),
               ),
+            ],
           ],
         ),
       ),
@@ -242,15 +259,29 @@ class _RecordCard extends StatelessWidget {
                     style: theme.textTheme.titleSmall,
                   ),
                   Text(record.typeLabel, style: muted),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Presencial ${record.inPerson ?? '—'} · Zoom ${record.zoom ?? '—'}',
-                    style: muted,
+                  const Divider(height: 14),
+                  Row(
+                    children: [
+                      Text(
+                        'Presencial ${record.inPerson ?? '—'}',
+                        style: theme.textTheme.bodySmall,
+                      ),
+                      const SizedBox(width: 16),
+                      Text(
+                        'Zoom ${record.zoom ?? '—'}',
+                        style: theme.textTheme.bodySmall,
+                      ),
+                    ],
                   ),
-                  if (record.note != null) Text(record.note!, style: muted),
+                  if (record.note != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 2),
+                      child: Text(record.note!, style: muted),
+                    ),
                 ],
               ),
             ),
+            const SizedBox(width: 12),
             Column(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [

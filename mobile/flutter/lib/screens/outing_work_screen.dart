@@ -505,7 +505,12 @@ class _OutingWorkScreenState extends ConsumerState<OutingWorkScreen> {
           crossAxisAlignment: WrapCrossAlignment.center,
           children: [
             if (details.isNotEmpty)
-              Text(details.join(' · '), style: theme.textTheme.bodySmall),
+              Text(
+                details.join(' · '),
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
             if (card.isCompleted) const _Badge('concluído', Color(0xFF196B24)),
             if (willComplete) _Badge('concluirá', color),
             if (willReopen) const _Badge('reabrirá', Color(0xFFB45309)),
@@ -514,6 +519,20 @@ class _OutingWorkScreenState extends ConsumerState<OutingWorkScreen> {
           ],
         ),
         children: [
+          if (card.whereWorked != null && card.whereWorked!.trim().isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  'Já trabalhado em: ${card.whereWorked!.trim().split('\n').where((l) => l.trim().isNotEmpty).map((l) => l.trim()).join('; ')}',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ),
+            ),
+          const Divider(height: 1),
           if (widget.canSave && card.streets.isNotEmpty)
             CheckboxListTile(
               dense: true,
@@ -524,7 +543,12 @@ class _OutingWorkScreenState extends ConsumerState<OutingWorkScreen> {
                 OutingWorkCoverage.none => false,
                 OutingWorkCoverage.partial => null,
               },
-              title: const Text('Todas as ruas (conclui o cartão)'),
+              title: Text(
+                'Todas as ruas (conclui o cartão)',
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
               onChanged: (_) => setState(
                 () =>
                     selection.setAll(card, coverage != OutingWorkCoverage.all),
@@ -549,7 +573,14 @@ class _OutingWorkScreenState extends ConsumerState<OutingWorkScreen> {
                       'já trabalhada neste ciclo',
                       style: TextStyle(color: Color(0xFF196B24)),
                     )
-                  : (street.meters > 0 ? Text('${street.meters} m') : null),
+                  : (street.meters > 0
+                        ? Text(
+                            '${street.meters} m',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: theme.colorScheme.onSurfaceVariant,
+                            ),
+                          )
+                        : null),
               onChanged: widget.canSave
                   ? (_) => setState(() => selection.toggleStreet(card, street))
                   : null,

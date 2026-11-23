@@ -88,9 +88,7 @@ class _ProgramacoesScreenState extends ConsumerState<ProgramacoesScreen> {
                     future: _future,
                     builder: (context, snapshot) {
                       if (snapshot.connectionState != ConnectionState.done) {
-                        return const Center(
-                          child: CircularProgressIndicator(),
-                        );
+                        return const Center(child: CircularProgressIndicator());
                       }
                       if (snapshot.hasError) {
                         return StateMessage(
@@ -182,10 +180,14 @@ class _ProgramacoesBody extends StatelessWidget {
       if (data.cleaning.isEmpty) {
         children.add(const _EmptyInline('Nenhuma escala de limpeza neste mês'));
       }
-      children.addAll(data.cleaning.map((entry) => _CleaningTile(entry: entry)));
+      children.addAll(
+        data.cleaning.map((entry) => _CleaningTile(entry: entry)),
+      );
     } else {
       if (data.meetings.isEmpty) {
-        children.add(const _EmptyInline('Nenhuma reunião programada neste mês'));
+        children.add(
+          const _EmptyInline('Nenhuma reunião programada neste mês'),
+        );
       }
       children.addAll(
         data.meetings.map((meeting) => _MeetingCard(meeting: meeting)),
@@ -210,7 +212,20 @@ class _EmptyInline extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Padding(
     padding: const EdgeInsets.symmetric(vertical: 32),
-    child: Center(child: Text(text, textAlign: TextAlign.center)),
+    child: Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            Icons.event_busy_outlined,
+            size: 36,
+            color: Theme.of(context).colorScheme.outline,
+          ),
+          const SizedBox(height: 8),
+          Text(text, textAlign: TextAlign.center),
+        ],
+      ),
+    ),
   );
 }
 
@@ -234,6 +249,9 @@ class _MeetingCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final muted = theme.textTheme.bodySmall?.copyWith(
+      color: theme.colorScheme.onSurfaceVariant,
+    );
     final groups = <String, List<ProgramacaoPart>>{};
     final titles = <String, String?>{};
     for (final part in meeting.parts) {
@@ -256,26 +274,31 @@ class _MeetingCard extends StatelessWidget {
           children: [
             Text(header, style: theme.textTheme.titleMedium),
             if (meeting.event != null)
-              Text(meeting.event!, style: theme.textTheme.bodyMedium),
+              Text(
+                meeting.event!,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: theme.colorScheme.secondary,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
             if (meeting.weeklyReading != null)
-              Text(
-                'Leitura da semana: ${meeting.weeklyReading}',
-                style: theme.textTheme.bodySmall,
-              ),
+              Text('Leitura da semana: ${meeting.weeklyReading}', style: muted),
             if (meeting.specialStructure != null)
-              Text(
-                meeting.specialStructure!,
-                style: theme.textTheme.bodySmall,
-              ),
+              Text(meeting.specialStructure!, style: muted),
             if (!meeting.textbookAvailable)
-              Text(
-                'Apostila ainda não disponível',
-                style: theme.textTheme.bodySmall,
-              ),
+              Text('Apostila ainda não disponível', style: muted),
             if (general.isNotEmpty) ...[
-              const SizedBox(height: 8),
+              const Divider(height: 20),
               for (final a in general)
-                Text(_assignmentLine(a), style: theme.textTheme.bodyMedium),
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 2),
+                  child: Text(
+                    _assignmentLine(a),
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
             ],
             for (final entry in groups.entries)
               _SectionBlock(
@@ -284,8 +307,13 @@ class _MeetingCard extends StatelessWidget {
                 meeting: meeting,
               ),
             if (meeting.outsideTalks.isNotEmpty) ...[
-              const SizedBox(height: 12),
-              Text('Discursos fora', style: theme.textTheme.titleSmall),
+              const Divider(height: 28),
+              Text(
+                'Discursos fora',
+                style: theme.textTheme.titleSmall?.copyWith(
+                  color: theme.colorScheme.primary,
+                ),
+              ),
               for (final talk in meeting.outsideTalks)
                 Padding(
                   padding: const EdgeInsets.only(top: 4),
@@ -297,7 +325,7 @@ class _MeetingCard extends StatelessWidget {
                       if (talk.speaker != null) talk.speaker!,
                       if (talk.destination != null) '→ ${talk.destination}',
                     ].where((text) => text.isNotEmpty).join(' · '),
-                    style: theme.textTheme.bodySmall,
+                    style: muted,
                   ),
                 ),
             ],
@@ -340,7 +368,8 @@ class _SectionBlock extends StatelessWidget {
               style: theme.textTheme.labelLarge?.copyWith(color: Colors.white),
             ),
           ),
-          for (final part in parts) _PartRow(part: part, meeting: meeting, color: color),
+          for (final part in parts)
+            _PartRow(part: part, meeting: meeting, color: color),
         ],
       ),
     );
@@ -368,15 +397,18 @@ class _PartRow extends StatelessWidget {
       if (part.minutes != null) '(${part.minutes} min)',
     ].join(' ');
     return Padding(
-      padding: const EdgeInsets.only(top: 8),
+      padding: const EdgeInsets.only(top: 10),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
             width: 3,
-            height: 34,
-            margin: const EdgeInsets.only(right: 8),
-            color: color,
+            height: 38,
+            margin: const EdgeInsets.only(right: 10),
+            decoration: BoxDecoration(
+              color: color,
+              borderRadius: BorderRadius.circular(2),
+            ),
           ),
           Expanded(
             child: Column(
@@ -387,10 +419,17 @@ class _PartRow extends StatelessWidget {
                   Text(
                     'Cântico ${part.songNumber}'
                     '${part.songTitle == null ? '' : ' · ${part.songTitle}'}',
-                    style: theme.textTheme.bodySmall,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
                   ),
                 if (part.info != null)
-                  Text(part.info!, style: theme.textTheme.bodySmall),
+                  Text(
+                    part.info!,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
                 if (assignments.isEmpty)
                   Text(
                     'Sem designação',
@@ -432,12 +471,29 @@ class _AvaCard extends StatelessWidget {
           children: [
             Text(_dateText(day.date), style: theme.textTheme.titleMedium),
             if (day.meetingType != null)
-              Text(day.meetingType!, style: theme.textTheme.bodySmall),
-            const SizedBox(height: 6),
+              Text(
+                day.meetingType!,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+            const Divider(height: 20),
             if (day.assignments.isEmpty)
-              const Text('Sem designações')
+              Text(
+                'Sem designações',
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: theme.colorScheme.outline,
+                ),
+              )
             else
-              for (final a in day.assignments) Text(_assignmentLine(a)),
+              for (final a in day.assignments)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 2),
+                  child: Text(
+                    _assignmentLine(a),
+                    style: theme.textTheme.bodyMedium,
+                  ),
+                ),
           ],
         ),
       ),
@@ -461,7 +517,10 @@ class _CleaningTile extends StatelessWidget {
       margin: const EdgeInsets.only(top: 12),
       child: ListTile(
         leading: const Icon(Icons.cleaning_services_outlined),
-        title: Text(entry.label ?? 'Limpeza'),
+        title: Text(
+          entry.label ?? 'Limpeza',
+          style: Theme.of(context).textTheme.titleSmall,
+        ),
         subtitle: Text(
           [
             if (when.isNotEmpty) when,

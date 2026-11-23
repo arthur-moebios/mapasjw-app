@@ -81,8 +81,13 @@ class _CardSuggestionsPanelState extends State<CardSuggestionsPanel> {
       key: ValueKey('card-suggestions-$_requestId'),
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Cartões sugeridos', style: theme.textTheme.titleSmall),
-        const SizedBox(height: 8),
+        Text(
+          'Cartões sugeridos',
+          style: theme.textTheme.labelLarge?.copyWith(
+            color: theme.colorScheme.secondary,
+          ),
+        ),
+        const Divider(height: 16),
         FutureBuilder<CardSuggestions>(
           future: _future,
           builder: (context, snapshot) {
@@ -119,7 +124,11 @@ class _CardSuggestionsPanelState extends State<CardSuggestionsPanel> {
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Icon(Icons.place_outlined, size: 18, color: muted),
+                        Icon(
+                          Icons.place_outlined,
+                          size: 18,
+                          color: theme.colorScheme.primary,
+                        ),
                         const SizedBox(width: 6),
                         Expanded(
                           child: Text(
@@ -166,6 +175,7 @@ class _SuggestionTile extends StatelessWidget {
       decoration: BoxDecoration(
         color: theme.colorScheme.surfaceContainerLow,
         borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: theme.colorScheme.outlineVariant),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -197,8 +207,8 @@ class _SuggestionTile extends StatelessWidget {
             style: theme.textTheme.bodySmall?.copyWith(color: muted),
           ),
           if (suggestion.reason.isNotEmpty) ...[
-            const SizedBox(height: 4),
-            Text(suggestion.reason, style: theme.textTheme.bodySmall),
+            const Divider(height: 16),
+            Text(suggestion.reason, style: theme.textTheme.bodyMedium),
           ],
         ],
       ),

@@ -221,16 +221,16 @@ String _range(String? start, String? end) {
   return '$start–$end';
 }
 
-Color _stateColor(String state) {
+Color _stateColor(ColorScheme colors, String state) {
   switch (state) {
     case 'cheio':
-      return const Color(0xFF2E7D32);
+      return colors.primary;
     case 'parcial':
-      return const Color(0xFFB8860B);
+      return colors.tertiary;
     case 'buraco':
-      return const Color(0xFFC62828);
+      return colors.error;
     default:
-      return const Color(0xFF6B7280);
+      return colors.outline;
   }
 }
 
@@ -299,9 +299,22 @@ class _CalendarBody extends StatelessWidget {
               onChanged: onSpot,
             ),
           if (!data.hasShifts || days.isEmpty)
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 32),
-              child: Center(child: Text('Nenhum turno neste mês')),
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 32),
+              child: Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.event_busy_outlined,
+                      size: 36,
+                      color: Theme.of(context).colorScheme.outline,
+                    ),
+                    const SizedBox(height: 8),
+                    const Text('Nenhum turno neste mês'),
+                  ],
+                ),
+              ),
             ),
           for (final day in days) _DayCard(day: day),
         ],
@@ -329,18 +342,36 @@ class _DayCard extends StatelessWidget {
               children: [
                 Expanded(
                   child: Text(
-                    day.today ? '${_dayText(day.date)} · hoje' : _dayText(day.date),
-                    style: theme.textTheme.titleSmall,
+                    day.today
+                        ? '${_dayText(day.date)} · hoje'
+                        : _dayText(day.date),
+                    style: theme.textTheme.titleMedium,
                   ),
                 ),
                 if (!day.past && day.openSlots > 0)
-                  Text(
-                    '${day.openSlots} vaga(s)',
-                    style: theme.textTheme.bodySmall,
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 2,
+                    ),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.secondaryContainer,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Text(
+                      '${day.openSlots} vaga(s)',
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: theme.colorScheme.onSecondaryContainer,
+                      ),
+                    ),
                   ),
               ],
             ),
-            for (final shift in day.shifts) _ShiftRow(shift: shift),
+            const Divider(height: 16),
+            for (var i = 0; i < day.shifts.length; i++) ...[
+              if (i > 0) const Divider(height: 16),
+              _ShiftRow(shift: day.shifts[i]),
+            ],
           ],
         ),
       ),
@@ -356,20 +387,22 @@ class _ShiftRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final color = _stateColor(shift.state);
-    final names = shift.people
-        .map((p) => p.firstName ?? 'Sem nome')
-        .join(', ');
+    final colors = theme.colorScheme;
+    final color = _stateColor(colors, shift.state);
+    final names = shift.people.map((p) => p.firstName ?? 'Sem nome').join(', ');
     return Padding(
-      padding: const EdgeInsets.only(top: 8),
+      padding: const EdgeInsets.symmetric(vertical: 2),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
             width: 4,
-            height: 40,
-            margin: const EdgeInsets.only(right: 8),
-            color: color,
+            height: 44,
+            margin: const EdgeInsets.only(right: 10),
+            decoration: BoxDecoration(
+              color: color,
+              borderRadius: BorderRadius.circular(2),
+            ),
           ),
           Expanded(
             child: Column(
@@ -377,7 +410,9 @@ class _ShiftRow extends StatelessWidget {
               children: [
                 Text(
                   '${shift.spot} · ${_range(shift.start, shift.end)}',
-                  style: theme.textTheme.bodyMedium,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
                 Text(
                   [
@@ -386,10 +421,18 @@ class _ShiftRow extends StatelessWidget {
                     '${shift.occupied}/${shift.capacity}',
                     if (shift.pending > 0) '${shift.pending} pendente(s)',
                   ].join(' · '),
-                  style: theme.textTheme.bodySmall?.copyWith(color: color),
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: color,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
                 if (names.isNotEmpty)
-                  Text(names, style: theme.textTheme.bodySmall),
+                  Text(
+                    names,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: colors.onSurfaceVariant,
+                    ),
+                  ),
               ],
             ),
           ),
@@ -414,10 +457,20 @@ class _SignupTile extends StatelessWidget {
     final when = signup.weekly
         ? 'Toda semana${signup.weekday == null ? '' : ' · ${signup.weekday}'}'
         : (signup.date == null ? 'Data a definir' : _dayText(signup.date));
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+    final statusColor = switch (signup.status) {
+      'aprovada' => colors.primary,
+      'recusada' => colors.error,
+      _ => colors.onSurfaceVariant,
+    };
     return Card(
       margin: const EdgeInsets.only(top: 12),
       child: ListTile(
-        title: Text(signup.spot?.name ?? 'Ponto do carrinho'),
+        title: Text(
+          signup.spot?.name ?? 'Ponto do carrinho',
+          style: theme.textTheme.titleSmall,
+        ),
         subtitle: Text(
           [
             when,
@@ -426,8 +479,14 @@ class _SignupTile extends StatelessWidget {
             if (signup.role != null) signup.role!,
             if (signup.spot?.address != null) signup.spot!.address!,
           ].join(' · '),
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: colors.onSurfaceVariant,
+          ),
         ),
-        trailing: Text(status),
+        trailing: Text(
+          status,
+          style: theme.textTheme.labelLarge?.copyWith(color: statusColor),
+        ),
       ),
     );
   }

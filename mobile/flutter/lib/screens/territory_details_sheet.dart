@@ -56,8 +56,9 @@ class TerritorySituationSummary extends StatelessWidget {
   Widget build(BuildContext context) {
     final color = colorFor(situation);
     final muted = Theme.of(context).colorScheme.onSurfaceVariant;
-    final style = Theme.of(context).textTheme.bodySmall
-        ?.copyWith(color: muted, height: 1.4);
+    final style = Theme.of(
+      context,
+    ).textTheme.bodySmall?.copyWith(color: muted, height: 1.4);
     final concluded = concludedAt != null
         ? 'Concluído em ${formatDatePtBr(concludedAt)}'
               '${concludedBy == null ? '' : ' por $concludedBy'}'
@@ -79,8 +80,10 @@ class TerritorySituationSummary extends StatelessWidget {
               ),
               child: Text(
                 situationLabel,
-                style: Theme.of(context).textTheme.labelMedium
-                    ?.copyWith(color: color, fontWeight: FontWeight.w700),
+                style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                  color: color,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
             ),
             if (forcedCompletion)
@@ -243,8 +246,28 @@ class TerritoryDetailsBody extends StatelessWidget {
     final muted = theme.colorScheme.onSurfaceVariant;
 
     Widget heading(String text) => Padding(
-      padding: const EdgeInsets.only(top: 20, bottom: 8),
-      child: Text(text, style: theme.textTheme.titleMedium),
+      padding: const EdgeInsets.only(top: 24, bottom: 4),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            text,
+            style: theme.textTheme.titleSmall?.copyWith(
+              color: theme.colorScheme.primary,
+            ),
+          ),
+          const Divider(height: 12),
+        ],
+      ),
+    );
+
+    Widget separated(Iterable<Widget> items) => Column(
+      children: [
+        for (final entry in items.indexed) ...[
+          if (entry.$1 > 0) const Divider(height: 1),
+          entry.$2,
+        ],
+      ],
     );
 
     Widget empty(String text) =>
@@ -266,26 +289,37 @@ class TerritoryDetailsBody extends StatelessWidget {
         if (details.locations.isEmpty)
           empty('Nenhum local cadastrado neste cartão.')
         else
-          ...details.locations.map(
-            (location) => ListTile(
-              contentPadding: EdgeInsets.zero,
-              dense: true,
-              leading: Icon(
-                location.worked
-                    ? Icons.check_circle_rounded
-                    : Icons.radio_button_unchecked_rounded,
-                color: location.worked ? const Color(0xFF196B24) : muted,
-              ),
-              title: Text(location.name),
-              subtitle: Text(
-                [
-                  location.address,
-                  location.neighborhood,
-                ].where((part) => part.isNotEmpty).join(' · '),
-              ),
-              trailing: Text(
-                location.worked ? 'Trabalhado' : 'Pendente',
-                style: theme.textTheme.labelSmall?.copyWith(color: muted),
+          separated(
+            details.locations.map(
+              (location) => ListTile(
+                contentPadding: EdgeInsets.zero,
+                dense: true,
+                leading: Icon(
+                  location.worked
+                      ? Icons.check_circle_rounded
+                      : Icons.radio_button_unchecked_rounded,
+                  color: location.worked ? const Color(0xFF196B24) : muted,
+                ),
+                title: Text(
+                  location.name,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                subtitle: Text(
+                  [
+                    location.address,
+                    location.neighborhood,
+                  ].where((part) => part.isNotEmpty).join(' · '),
+                  style: theme.textTheme.bodySmall?.copyWith(color: muted),
+                ),
+                trailing: Text(
+                  location.worked ? 'Trabalhado' : 'Pendente',
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: location.worked ? theme.colorScheme.primary : muted,
+                    fontWeight: location.worked ? FontWeight.w700 : null,
+                  ),
+                ),
               ),
             ),
           ),
@@ -293,46 +327,59 @@ class TerritoryDetailsBody extends StatelessWidget {
         if (details.cycles.isEmpty)
           empty('Nenhum ciclo registrado.')
         else
-          ...details.cycles.map(
-            (cycle) => ListTile(
-              contentPadding: EdgeInsets.zero,
-              dense: true,
-              leading: Icon(
-                cycle.closedAt == null
-                    ? Icons.autorenew_rounded
-                    : Icons.task_alt_rounded,
-                color: cycle.closedAt == null
-                    ? const Color(0xFFB4531F)
-                    : const Color(0xFF196B24),
+          separated(
+            details.cycles.map(
+              (cycle) => ListTile(
+                contentPadding: EdgeInsets.zero,
+                dense: true,
+                leading: Icon(
+                  cycle.closedAt == null
+                      ? Icons.autorenew_rounded
+                      : Icons.task_alt_rounded,
+                  color: cycle.closedAt == null
+                      ? const Color(0xFFB4531F)
+                      : const Color(0xFF196B24),
+                ),
+                title: Text(
+                  'Aberto em ${formatDatePtBr(cycle.openedAt)} → '
+                  '${cycle.closedAt == null ? 'em andamento' : 'concluído em ${formatDatePtBr(cycle.closedAt)}'}',
+                ),
+                subtitle: cycle.concludedBy == null
+                    ? null
+                    : Text(
+                        'Concluído por ${cycle.concludedBy}',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: muted,
+                        ),
+                      ),
               ),
-              title: Text(
-                'Aberto em ${formatDatePtBr(cycle.openedAt)} → '
-                '${cycle.closedAt == null ? 'em andamento' : 'concluído em ${formatDatePtBr(cycle.closedAt)}'}',
-              ),
-              subtitle: cycle.concludedBy == null
-                  ? null
-                  : Text('Concluído por ${cycle.concludedBy}'),
             ),
           ),
         heading('Últimas passagens'),
         if (details.recentPasses.isEmpty)
           empty('Nenhuma passagem recente.')
         else
-          ...details.recentPasses.map(
-            (pass) => ListTile(
-              contentPadding: EdgeInsets.zero,
-              dense: true,
-              leading: const Icon(Icons.directions_walk_rounded),
-              title: Text(
-                '${formatDatePtBr(pass.date)}'
-                '${pass.publisher == null ? '' : ' · ${pass.publisher}'}',
-              ),
-              subtitle: Text(
-                [
-                  if (pass.outingLeader != null)
-                    'Dirigente: ${pass.outingLeader}',
-                  if (pass.location != null) 'Local: ${pass.location}',
-                ].join(' · '),
+          separated(
+            details.recentPasses.map(
+              (pass) => ListTile(
+                contentPadding: EdgeInsets.zero,
+                dense: true,
+                leading: const Icon(Icons.directions_walk_rounded),
+                title: Text(
+                  '${formatDatePtBr(pass.date)}'
+                  '${pass.publisher == null ? '' : ' · ${pass.publisher}'}',
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                subtitle: Text(
+                  [
+                    if (pass.outingLeader != null)
+                      'Dirigente: ${pass.outingLeader}',
+                    if (pass.location != null) 'Local: ${pass.location}',
+                  ].join(' · '),
+                  style: theme.textTheme.bodySmall?.copyWith(color: muted),
+                ),
               ),
             ),
           ),

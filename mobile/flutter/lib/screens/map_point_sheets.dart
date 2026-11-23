@@ -132,16 +132,26 @@ class MapPointDetailsSheet extends ConsumerWidget {
               avatar: CircleAvatar(backgroundColor: point.color, radius: 6),
               label: Text(point.type),
             ),
+            if (point.address.isNotEmpty || point.notes.isNotEmpty)
+              const Divider(height: 24),
             if (point.address.isNotEmpty)
               ListTile(
                 contentPadding: EdgeInsets.zero,
-                leading: const Icon(Icons.place_outlined),
+                leading: Icon(
+                  Icons.place_outlined,
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
                 title: Text(point.address),
               ),
+            if (point.address.isNotEmpty && point.notes.isNotEmpty)
+              const Divider(height: 1),
             if (point.notes.isNotEmpty)
               ListTile(
                 contentPadding: EdgeInsets.zero,
-                leading: const Icon(Icons.notes_rounded),
+                leading: Icon(
+                  Icons.notes_rounded,
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
                 title: Text(point.notes),
               ),
             if (canManage) ...[

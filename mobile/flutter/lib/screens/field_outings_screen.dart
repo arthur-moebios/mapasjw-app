@@ -276,9 +276,9 @@ class _FieldOutingsScreenState extends ConsumerState<FieldOutingsScreen> {
                           day,
                           style: Theme.of(context).textTheme.labelSmall
                               ?.copyWith(
-                                color: Theme.of(context)
-                                    .colorScheme
-                                    .onSurfaceVariant,
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onSurfaceVariant,
                               ),
                         ),
                       ),
@@ -438,7 +438,8 @@ class _FieldOutingsScreenState extends ConsumerState<FieldOutingsScreen> {
                     ),
                 ],
               ),
-              const SizedBox(height: 13),
+              const SizedBox(height: 8),
+              const Divider(height: 16),
               _FieldDetailRow(
                 icon: Icons.place_outlined,
                 text: outing.location?.name ?? 'Local não definido',
@@ -488,7 +489,7 @@ class _FieldOutingsScreenState extends ConsumerState<FieldOutingsScreen> {
                   text: outing.leader,
                 ),
               ],
-              const SizedBox(height: 10),
+              const Divider(height: 20),
               Wrap(
                 spacing: 7,
                 runSpacing: 7,
@@ -516,11 +517,11 @@ class _FieldOutingsScreenState extends ConsumerState<FieldOutingsScreen> {
                           .toList(growable: false),
               ),
               if (outing.streetPoints.isNotEmpty) ...[
-                const SizedBox(height: 12),
+                const Divider(height: 24),
                 _StreetPointsList(points: outing.streetPoints),
               ],
               if (outing.territoryCards.isNotEmpty) ...[
-                const SizedBox(height: 12),
+                const Divider(height: 24),
                 Text(
                   'CARTÕES ALCANÇADOS A PARTIR DO LOCAL',
                   style: Theme.of(context).textTheme.labelSmall?.copyWith(
@@ -655,8 +656,9 @@ class _FieldOutingsScreenState extends ConsumerState<FieldOutingsScreen> {
         const SizedBox(height: 4),
         Text(
           'Cadastre os dias e horários que se repetem. Depois escolha um período para criar as saídas no calendário.',
-          style: Theme.of(context).textTheme.bodyMedium
-              ?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
         ),
         if (calendar.canManage) ...[
           const SizedBox(height: 12),
@@ -695,6 +697,9 @@ class _FieldOutingsScreenState extends ConsumerState<FieldOutingsScreen> {
                 ),
                 title: Text(
                   pattern.name.isEmpty ? pattern.description : pattern.name,
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
                 ),
                 subtitle: Text(
                   [
@@ -754,8 +759,9 @@ class _FieldOutingsScreenState extends ConsumerState<FieldOutingsScreen> {
         const SizedBox(height: 5),
         Text(
           'Histórico do ano de serviço. Esses registros vêm da integração existente e são consultados no app.',
-          style: Theme.of(context).textTheme.bodyMedium
-              ?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
         ),
         const SizedBox(height: 12),
         if (data != null && data.availableYears.isNotEmpty)
@@ -814,12 +820,17 @@ class _FieldOutingsScreenState extends ConsumerState<FieldOutingsScreen> {
             (designation) => Card(
               child: ListTile(
                 leading: CircleAvatar(
-                  backgroundColor: Theme.of(context)
-                      .colorScheme
-                      .primaryContainer,
+                  backgroundColor: Theme.of(
+                    context,
+                  ).colorScheme.primaryContainer,
                   child: Text(designation.territoryNumber.split('.').first),
                 ),
-                title: Text('Território ${designation.territoryNumber}'),
+                title: Text(
+                  'Território ${designation.territoryNumber}',
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+                ),
                 subtitle: Text(
                   [
                     if (designation.territoryName.isNotEmpty)
@@ -2061,7 +2072,12 @@ class _StreetPointsList extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(point.label, style: theme.textTheme.bodyMedium),
+                Text(
+                  point.label,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
                 if (point.streets.isNotEmpty)
                   Text(point.streets.join(', '), style: muted),
                 if ((point.location?.address ?? '').isNotEmpty)
@@ -2194,8 +2210,9 @@ class _InfoPill extends StatelessWidget {
   Widget build(BuildContext context) => Container(
     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
     decoration: BoxDecoration(
-      color: Theme.of(context).colorScheme.surfaceContainerHighest
-          .withValues(alpha: .7),
+      color: Theme.of(
+        context,
+      ).colorScheme.surfaceContainerHighest.withValues(alpha: .7),
       borderRadius: BorderRadius.circular(20),
     ),
     child: Row(

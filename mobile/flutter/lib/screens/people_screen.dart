@@ -73,12 +73,12 @@ class _PeopleScreenState extends ConsumerState<PeopleScreen> {
                     children: [
                       Text(
                         'Pessoas da congregação',
-                        style: Theme.of(context).textTheme.headlineSmall,
+                        style: Theme.of(context).textTheme.titleLarge,
                       ),
                       const SizedBox(height: 4),
                       Text(
                         '${snapshot.data?.length ?? 0} cadastradas',
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
                           color: Theme.of(context).colorScheme.onSurfaceVariant,
                         ),
                       ),
@@ -147,6 +147,8 @@ class _PersonCard extends StatelessWidget {
         ),
         title: Text(
           '${person.name}${person.isSelf ? ' · Você' : ''}',
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
           style: const TextStyle(fontWeight: FontWeight.w700),
         ),
         subtitle: Padding(
@@ -154,7 +156,14 @@ class _PersonCard extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(person.email),
+              Text(
+                person.email,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(
+                  context,
+                ).textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant),
+              ),
               const SizedBox(height: 7),
               Wrap(
                 spacing: 7,
@@ -168,10 +177,10 @@ class _PersonCard extends StatelessWidget {
                   _PersonBadge(
                     label: person.isActive ? 'Ativa' : 'Inativa',
                     color: person.isActive
-                        ? const Color(0xFFE6F4EA)
+                        ? colors.tertiaryContainer
                         : colors.errorContainer,
                     foreground: person.isActive
-                        ? const Color(0xFF246B45)
+                        ? colors.onTertiaryContainer
                         : colors.onErrorContainer,
                   ),
                 ],
@@ -206,8 +215,10 @@ class _PersonBadge extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       child: Text(
         label,
-        style: Theme.of(context).textTheme.labelSmall
-            ?.copyWith(color: foreground, fontWeight: FontWeight.w700),
+        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+          color: foreground,
+          fontWeight: FontWeight.w700,
+        ),
       ),
     ),
   );
@@ -233,11 +244,21 @@ class _PeopleMessage extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 38),
+          Icon(icon, size: 38, color: Theme.of(context).colorScheme.outline),
           const SizedBox(height: 12),
-          Text(title, textAlign: TextAlign.center),
+          Text(
+            title,
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
           const SizedBox(height: 6),
-          Text(message, textAlign: TextAlign.center),
+          Text(
+            message,
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+          ),
           if (action != null) ...[const SizedBox(height: 12), action!],
         ],
       ),
