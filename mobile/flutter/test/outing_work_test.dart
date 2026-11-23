@@ -76,6 +76,20 @@ void main() {
     expect(data.candidates.last.record?.completed, isTrue);
   });
 
+  test('where_worked vindo do servidor como lista não quebra a tela', () {
+    final payload = _payload();
+    final candidates = payload['candidates'] as List;
+    (candidates.first as Map<String, dynamic>)['where_worked'] = [
+      '16/11: Ruas: Rua E',
+      '20/11: Ruas: Rua F',
+    ];
+    final data = OutingWorkData.fromJson(payload);
+    expect(
+      data.candidates.first.whereWorked,
+      '16/11: Ruas: Rua E\n20/11: Ruas: Rua F',
+    );
+  });
+
   test('informational outing needs no record', () {
     final data = OutingWorkData.fromJson({
       'outing': {'id': 8, 'date': '2026-11-07', 'location': null},

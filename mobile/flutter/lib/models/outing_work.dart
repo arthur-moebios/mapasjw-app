@@ -133,7 +133,14 @@ class OutingWorkCandidate {
       likely: json['likely'] == true,
       coverageState: json['coverage_state'] as String?,
       lastWorkedAt: json['last_worked_at'] as String?,
-      whereWorked: json['where_worked'] as String?,
+      whereWorked: switch (json['where_worked']) {
+        final String text => text,
+        final List<dynamic> items => items
+            .whereType<String>()
+            .where((line) => line.trim().isNotEmpty)
+            .join('\n'),
+        _ => null,
+      },
       streets: (json['streets'] as List? ?? const [])
           .whereType<Map>()
           .map(
